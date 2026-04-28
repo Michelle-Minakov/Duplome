@@ -1,0 +1,31 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Згенеровані документи
+generated/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Логи
+*.log
+logs/
+
+# Spring Boot
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# OS
+.DS_Store

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Генератор військових документів</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1a3a5c;
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.1);
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1a3a5c;
+    }
+
+    textarea {
+      width: 100%;
+      height: 160px;
+      padding: 12px;
+      border: 1px solid #c8d0e0;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      resize: vertical;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: border-color .2s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #3a7bd5;
+    }
+
+    .examples {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #777;
+    }
+    .examples span {
+      cursor: pointer;
+      color: #3a7bd5;
+      text-decoration: underline;
+      margin-right: 10px;
+    }
+    .examples span:hover { color: #1a5cb0; }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 22px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, opacity .2s;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    #btnText {
+      background: #3a7bd5;
+      color: #fff;
+      flex: 1;
+      min-width: 180px;
+    }
+    #btnText:hover:not(:disabled) { background: #2f66b5; }
+
+    #btnClear {
+      background: #e8ecf2;
+      color: #555;
+      min-width: 90px;
+    }
+    #btnClear:hover:not(:disabled) { background: #d0d8e8; }
+
+    .status {
+      margin-top: 16px;
+      font-size: 0.88rem;
+      color: #555;
+      min-height: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #c8d0e0;
+      border-top-color: #3a7bd5;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-box {
+      margin-top: 24px;
+      display: none;
+    }
+    .result-box label { margin-bottom: 6px; }
+    .result-text {
+      white-space: pre-wrap;
+      background: #f7f9fc;
+      border: 1px solid #c8d0e0;
+      border-radius: 6px;
+      padding: 16px;
+      font-size: 0.93rem;
+      line-height: 1.7;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .error { color: #c0392b; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Генератор військових документів</h1>
+  <p>Перетворює тези або нотатки на офіційний текст за ДСТУ 4163:2020</p>
+</header>
+
+<div class="card">
+  <label for="notes">Введіть тези / нотатки</label>
+  <textarea id="notes" placeholder="Наприклад: рапорт від Коваленко, прошу відпустку 3 доби з 25.04.2026, причина — сімейні обставини..."></textarea>
+
+  <div class="examples">
+    Приклади:
+    <span onclick="fill('rapor')">Рапорт</span>
+    <span onclick="fill('nakaz')">Наказ</span>
+    <span onclick="fill('zvit')">Звіт</span>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="btnText" onclick="generate()">Згенерувати документ</button>
+    <button type="button" id="btnClear" onclick="clearAll()">Очистити</button>
+  </div>
+
+  <div class="status">
+    <div class="spinner" id="spinner"></div>
+    <span id="statusMsg"></span>
+  </div>
+
+  <div class="result-box" id="resultBox">
+    <label>Згенерований документ</label>
+    <div class="result-text" id="resultText"></div>
+  </div>
+</div>
+
+<script>
+  const EXAMPLES = {
+    rapor: 'Рапорт від підполковника Коваленко О.В., 23.04.2026. Прошу надати відпустку тривалістю 3 доби з 25 квітня 2026 року у зв\'язку з сімейними обставинами (хвороба матері). Адресовано командиру в/ч А0000 полковнику Шевченку М.І.',
+    nakaz: 'Наказ командира в/ч А1234 від 21.04.2026. Призначити капітана Мельника В.П. на посаду начальника зв\'язку з 22.04.2026. Підстава: рапорт особового складу та рішення атестаційної комісії.',
+    zvit: 'Звіт про виконання бойового завдання за квітень 2026. Підрозділ виконав 12 рейдів, втрати відсутні, техніка справна на 100%. Автор: старший лейтенант Бойко Д.С., дата 21.04.2026.'
+  };
+
+  function fill(key) {
+    document.getElementById('notes').value = EXAMPLES[key];
+  }
+
+  function clearAll() {
+    document.getElementById('notes').value = '';
+    document.getElementById('resultBox').style.display = 'none';
+    document.getElementById('statusMsg').textContent = '';
+  }
+
+  async function generate() {
+    const notes = document.getElementById('notes').value.trim();
+    if (!notes) {
+      setStatus('Введіть текст нотаток.', true);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const resp = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: notes
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(err || `HTTP ${resp.status}`);
+      }
+
+      const text = await resp.text();
+
+      // Витягуємо шлях до .docx із першого рядка відповіді
+      const lines = text.split('\n');
+      const pathLine = lines[0].startsWith('Документ збережено:') ? lines[0] : '';
+      const docText  = pathLine ? lines.slice(2).join('\n').trim() : text;
+
+      document.getElementById('resultText').textContent = docText;
+      document.getElementById('resultBox').style.display = 'block';
+
+      const statusMsg = pathLine
+        ? `Документ згенеровано. ${pathLine}`
+        : 'Документ згенеровано.';
+      setStatus(statusMsg);
+
+    } catch (e) {
+      setStatus('Помилка: ' + e.message, true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on) {
+    document.getElementById('spinner').style.display = on ? 'block' : 'none';
+    ['btnText', 'btnClear'].forEach(id =>
+      document.getElementById(id).disabled = on);
+    if (on) setStatus('Генерація документа… (може зайняти до 2 хв)');
+  }
+
+  function setStatus(msg, isError = false) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = isError ? 'error' : '';
+  }
+</script>
+</body>
+</html>
