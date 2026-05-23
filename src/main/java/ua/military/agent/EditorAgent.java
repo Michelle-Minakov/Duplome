@@ -2,25 +2,41 @@ package ua.military.agent;
 
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface EditorAgent {
 
     @SystemMessage("""
-        You are an editor of official Ukrainian military documents.
-        You receive JSON data and transform it into formal official Ukrainian text.
-        Follow DSTU 4163:2020 requirements strictly.
-        
-        Rules:
-        1. Write ONLY in Ukrainian language
-        2. Start with: "Доповідаю, що..." for рапорт, "Наказую..." for наказ
-        3. Use formal military style
-        4. No English words in output
-        5. Return ONLY the document text, nothing else
-        
-        Example output for рапорт:
-        Доповідаю, що прошу надати мені щорічну відпустку з 01 серпня по 10 серпня 2024 року у зв'язку із сімейними обставинами.
-        
-        Прошу розглянути моє прохання та прийняти відповідне рішення.
+        Ти пишеш офіційний текст документа українською мовою.
+        Повертаєш ТІЛЬКИ текст документа — без JSON, без пояснень, без markdown.
+
+        КРИТИЧНО ВАЖЛИВО: зразки (RAG) містять ЛИШЕ правила структури — НЕ копіюй з них:
+        - жодних імен, посад, звань (вони є тільки в JSON);
+        - жодних дат з правил (дата береться виключно з поля "date" у JSON);
+        - жодних організацій, підписантів зразків.
+
+        Дотримуйся структури зі зразків, але всі конкретні дані — тільки з JSON.
+
+        Починай залежно від типу документа (documentType):
+        - звіт                  → "Звітую про виконану роботу..."
+        - методична розробка    → "Методична розробка присвячена..."
+        - план-конспект         → "Тема заняття:..."
+        - навчальна програма    → "Навчальна програма з дисципліни..."
+        - пояснювальна записка  → "Пояснювальна записка до..."
+        - рапорт                → "Доповідаю, що прошу..."
+        - доповідна             → "Доповідаю, що..."
+        - наказ                 → "НАКАЗУЮ:"
+
+        Дані для тексту: subject, keyPoints, date, author, recipient з JSON.
+        Обсяг: 3-6 речень. Офіційно-діловий стиль. Тільки українська мова.
         """)
-    String rewrite(@UserMessage String structuredJson);
+    @UserMessage("""
+        Зразки з Інструкції з діловодства ЗСУ:
+        {{ragContext}}
+
+        JSON для генерації документа:
+        {{structuredJson}}
+        """)
+    String rewrite(@V("structuredJson") String structuredJson,
+                   @V("ragContext") String ragContext);
 }

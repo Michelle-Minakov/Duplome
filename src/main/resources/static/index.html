@@ -3,260 +3,1855 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Генератор військових документів</title>
+  <title>AI Генератор документів · ВВНЗ</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #f0f2f5;
-      color: #1a1a2e;
-      min-height: 100vh;
+    :root {
+      --primary:    #2563eb;
+      --primary-d:  #1d4ed8;
+      --success:    #059669;
+      --success-d:  #047857;
+      --compare:    #7c3aed;
+      --compare-d:  #6d28d9;
+      --danger:     #dc2626;
+      --warning:    #d97706;
+      --bg:         #f1f5f9;
+      --card:       #ffffff;
+      --border:     #e2e8f0;
+      --text:       #0f172a;
+      --text-2:     #334155;
+      --muted:      #64748b;
+      --radius:     12px;
+    .type-card .recommended-badge {
+      margin-left: auto;
+      background: linear-gradient(90deg,#a7f3d0,#fef3c7);
+      color: #065f46;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: .66rem;
+      font-weight: 800;
+      box-shadow: 0 6px 18px rgba(99,102,241,.06);
+    }
+    .type-card.recommended { 
+      box-shadow: 0 8px 24px rgba(16,185,129,.08); 
+      border: 1px solid rgba(16,185,129,.18); 
+    }
+    .type-card.recommended .type-card-icon { 
+      box-shadow: 0 6px 12px rgba(16,185,129,.06); 
+    }
+
+    /* ── Шапка ── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, var(--primary) 100%);
+      color: #fff;
+      padding: 0 28px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 14px rgba(15,23,42,.22);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-icon {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,.18);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    header h1  { font-size: .98rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+    header p   { font-size: .72rem; opacity: .78; margin-top: 2px; }
+    .header-badges {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .header-badge {
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 600;
+      background: rgba(255,255,255,.14);
+      letter-spacing: .04em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+    .header-badge-icon {
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .8rem;
+      opacity: .95;
+    }
+    @media (max-width: 780px) { .header-badges { display: none; } }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.15fr) minmax(320px, .85fr);
+      gap: 22px;
+      max-width: 1240px;
+      margin: 24px auto;
+      padding: 0 20px 20px;
+    }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+    .section-wrap {
+      max-width: 1240px;
+      margin: 0 auto 24px;
+      padding: 0 20px;
+    }
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+    /* ── Картка ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      border: 1px solid var(--border);
+    }
+    .card-title {
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .card-title--inline { margin-bottom: 0; }
+
+    .doc-type-group {
+      margin-bottom: 18px;
+    }
+    .group-title {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--text-2);
+      margin-bottom: 12px;
+    }
+    .doc-type-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 600px) { .doc-type-cards { grid-template-columns: 1fr; } }
+    .type-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .2s, transform .2s, box-shadow .2s, background .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .type-card:hover {
+      border-color: rgba(37,99,235,.35);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15,23,42,.06);
+    }
+    .type-card input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .type-card-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: #f8fafc;
+      color: var(--primary);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .type-card-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .type-card-meta {
+      font-size: .8rem;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+    .type-card.selected {
+      background: rgba(37,99,235,.08);
+      border-color: rgba(37,99,235,.35);
+    }
+    .type-card.selected .type-card-icon { background: rgba(37,99,235,.15); }
+
+    .switch-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: #f8fafc;
+      margin-top: 18px;
+      transition: border-color .2s, background .2s;
+    }
+    .switch-panel:hover { border-color: rgba(124,58,237,.35); }
+    .switch-info {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 32px 16px;
+      gap: 4px;
     }
-
-    header {
-      text-align: center;
-      margin-bottom: 28px;
+    .switch-label { font-size: .92rem; font-weight: 700; color: var(--text); }
+    .switch-hint { font-size: .78rem; color: var(--muted); }
+    .switch-control {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex-shrink: 0;
+      transition: background .2s;
     }
-    header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #1a3a5c;
-    }
-    header p {
-      margin-top: 6px;
-      font-size: 0.9rem;
-      color: #555;
-    }
-
-    .card {
+    .switch-control::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.1);
-      padding: 28px 32px;
+      box-shadow: 0 1px 4px rgba(15,23,42,.15);
+      transition: transform .2s;
+      transform: translateX(0);
+    }
+    .switch-input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .switch-input:checked + .switch-control { background: var(--compare); }
+    .switch-input:checked + .switch-control::after { transform: translateX(20px); }
+
+    .btn-generate {
       width: 100%;
-      max-width: 760px;
+      margin-top: 18px;
+      padding: 16px 18px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 18px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background .2s, transform .15s, box-shadow .2s;
+      letter-spacing: .02em;
+      box-shadow: 0 12px 28px rgba(37,99,235,.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
-
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: #1a3a5c;
+    .btn-generate:hover:not(:disabled) {
+      background: var(--primary-d);
+      box-shadow: 0 16px 32px rgba(37,99,235,.28);
     }
+    .btn-generate:active:not(:disabled) { transform: translateY(1px); }
+    .btn-generate:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+    .btn-generate.compare-active { background: var(--compare); box-shadow: 0 12px 28px rgba(124,58,237,.18); }
+    .btn-generate.compare-active:hover:not(:disabled) { background: var(--compare-d); }
+    .btn-generate .btn-icon { font-size: 1.1rem; }
 
+    /* ── Textarea ── */
+    .textarea-wrap { position: relative; }
     textarea {
       width: 100%;
-      height: 160px;
-      padding: 12px;
-      border: 1px solid #c8d0e0;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      resize: vertical;
+      min-height: 200px;
+      padding: 16px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      font-size: .95rem;
       font-family: inherit;
-      line-height: 1.5;
-      transition: border-color .2s;
+      line-height: 1.75;
+      resize: vertical;
+      color: var(--text);
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+      background: #fbfdff;
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.04);
     }
     textarea:focus {
       outline: none;
-      border-color: #3a7bd5;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.14);
+      background: #fff;
+      transform: translateY(-1px);
+    }
+    .char-count {
+      position: absolute;
+      bottom: 12px; right: 14px;
+      font-size: .75rem;
+      color: #94a3b8;
+      pointer-events: none;
     }
 
-    .examples {
-      margin-top: 8px;
-      font-size: 0.82rem;
-      color: #777;
-    }
-    .examples span {
-      cursor: pointer;
-      color: #3a7bd5;
-      text-decoration: underline;
-      margin-right: 10px;
-    }
-    .examples span:hover { color: #1a5cb0; }
-
-    .actions {
-      display: flex;
-      gap: 12px;
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
       margin-top: 18px;
+    }
+    .meta-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .meta-field--wide {
+      grid-column: span 2;
+    }
+    .meta-field label {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text-2);
+    }
+    .meta-field input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+      font: inherit;
+      color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .meta-field input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .selected-document-type {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      font-size: .9rem;
+      color: var(--text-2);
+    }
+    .doc-type-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* ── Приклади ── */
+    /* ── Тоггл порівняння ── */
+    .compare-toggle-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      background: #f8fafc;
+      transition: border-color .2s, background .2s;
+    }
+    .compare-toggle-wrap:hover { border-color: rgba(124,58,237,.35); }
+    .compare-toggle-wrap.active { border-color: var(--compare); background: rgba(124,58,237,.08); }
+    .compare-toggle-label { display: flex; align-items: center; gap: 10px; font-size: .95rem; font-weight: 700; color: var(--text); }
+    .compare-toggle-hint  { font-size: .78rem; color: var(--muted); margin-left: auto; }
+    .switch-control {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .switch-control input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      margin: 0;
+    }
+    .switch-track {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      transition: background .2s;
+    }
+    .switch-thumb {
+      position: absolute;
+      inset: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(15,23,42,.18);
+      transition: transform .2s;
+      transform: translateX(0);
+    }
+    #compareMode:checked + .switch-track { background: var(--compare); }
+    #compareMode:checked + .switch-track .switch-thumb { transform: translateX(20px); }
+
+    /* ── Конвеєр ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 16px;
       flex-wrap: wrap;
     }
-
-    button {
-      padding: 10px 22px;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.95rem;
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .75rem;
       font-weight: 600;
-      cursor: pointer;
-      transition: background .2s, opacity .2s;
+      color: var(--muted);
+      padding: 5px 11px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      transition: all .3s;
+      background: #fff;
     }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-
-    #btnText {
-      background: #3a7bd5;
-      color: #fff;
-      flex: 1;
-      min-width: 180px;
+    .step .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background .3s;
     }
-    #btnText:hover:not(:disabled) { background: #2f66b5; }
-
-    #btnClear {
-      background: #e8ecf2;
-      color: #555;
-      min-width: 90px;
+    .step.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #eff6ff;
     }
-    #btnClear:hover:not(:disabled) { background: #d0d8e8; }
+    .step.active .dot {
+      background: var(--primary);
+      animation: pulse .8s infinite;
+    }
+    .step.done {
+      border-color: var(--success);
+      color: var(--success);
+      background: #f0fdf4;
+    }
+    .step.done .dot { background: var(--success); }
+    .step-arrow { color: var(--border); font-size: .85rem; }
 
-    .status {
-      margin-top: 16px;
-      font-size: 0.88rem;
-      color: #555;
-      min-height: 22px;
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.8); }
+    }
+
+    /* ── Skeleton / shimmer ── */
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(90deg, #f3f4f6, #e6eefb, #f3f4f6);
+      border-radius: 8px;
+    }
+    .skeleton::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.45), rgba(255,255,255,0));
+      transform: translateX(-110%);
+      animation: shimmer 1.2s linear infinite;
+      mix-blend-mode: overlay;
+    }
+    @keyframes shimmer { 100% { transform: translateX(110%); } }
+    .skeleton-line { height: 12px; margin-bottom: 10px; border-radius: 6px; }
+    .skeleton-lg { height: 18px; }
+    .skeleton-avatar { width: 44px; height: 44px; border-radius: 8px; display:inline-block; }
+
+    /* ── Micro interactions ── */
+    .pulse-on-select { animation: selectPulse .42s ease; }
+    @keyframes selectPulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    .ripple { position: relative; overflow: hidden; }
+    .ripple-effect { position: absolute; border-radius: 999px; transform: scale(0); animation: rippleAnim .6s linear; background: rgba(255,255,255,.6); }
+    @keyframes rippleAnim { to { transform: scale(8); opacity: 0; } }
+
+    /* ── Статус ── */
+    .status-bar {
+      margin-top: 10px;
+      min-height: 18px;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .status-bar.error { color: var(--danger); font-weight: 600; }
+
+    /* ── Порожній стан ── */
+    .result-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 340px;
+      color: var(--muted);
+      font-size: .95rem;
+      gap: 14px;
+      text-align: center;
+      padding: 22px;
+    }
+    .result-empty .empty-icon {
+      width: 80px; height: 80px;
+      background: #f1f5f9;
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem;
+      color: #94a3b8;
+    }
+    .result-empty span { color: #64748b; }
+
+    /* ── Мета документа ── */
+    .doc-meta {
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
-    .spinner {
-      width: 16px; height: 16px;
-      border: 2px solid #c8d0e0;
-      border-top-color: #3a7bd5;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      display: none;
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 700;
+      background: #eff6ff;
+      color: var(--primary);
+      text-transform: capitalize;
+      letter-spacing: .02em;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .timing {
+      font-size: .75rem;
+      color: var(--muted);
+      background: #f8fafc;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
 
-    .result-box {
-      margin-top: 24px;
-      display: none;
+    /* ── Метрики ── */
+    .metrics-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
     }
-    .result-box label { margin-bottom: 6px; }
-    .result-text {
+    .metric-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: .73rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: var(--text-2);
+    }
+    .metric-chip.ok   { background: #f0fdf4; border-color: #86efac; color: var(--success); }
+    .metric-chip.warn { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+
+    /* ── Текст документа ── */
+    .doc-text {
       white-space: pre-wrap;
-      background: #f7f9fc;
-      border: 1px solid #c8d0e0;
-      border-radius: 6px;
+      font-size: .88rem;
+      line-height: 1.8;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
       padding: 16px;
-      font-size: 0.93rem;
-      line-height: 1.7;
-      max-height: 380px;
+      max-height: 280px;
+      overflow-y: auto;
+      color: var(--text-2);
+    }
+
+    /* ── Кнопки дій ── */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      background: var(--success);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: .85rem;
+      transition: background .2s, box-shadow .2s;
+      box-shadow: 0 2px 6px rgba(5,150,105,.25);
+    }
+    .btn-download:hover { background: var(--success-d); box-shadow: 0 4px 12px rgba(5,150,105,.35); }
+    .btn-download.hidden { display: none; }
+    .btn-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      background: #fff;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+    }
+    .btn-preview:hover { background: var(--primary); color: #fff; }
+    .btn-preview.hidden { display: none; }
+
+    /* Копіювати */
+    .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      background: #fff;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-copy:hover { border-color: var(--muted); color: var(--text); }
+    .btn-copy.hidden { display: none; }
+    .hidden { display: none !important; }
+    .btn-copy.copied { border-color: var(--success); color: var(--success); }
+
+    .rag-panel {
+      margin: 14px 0 10px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #eef2ff;
+      border: 1px solid rgba(99,102,241,.24);
+    }
+    .rag-label {
+      margin-bottom: 8px;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #312e81;
+    }
+    .rag-text {
+      font-size: .86rem;
+      line-height: 1.6;
+      color: #1f2937;
+      white-space: pre-wrap;
+    }
+
+    /* ── Порівняння ── */
+    .compare-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .compare-badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 700;
+      background: #faf5ff;
+      color: var(--compare);
+      border: 1px solid #ddd6fe;
+    }
+    .compare-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) { .compare-cols { grid-template-columns: 1fr; } }
+
+    .compare-col-label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+    .label-rag   { color: var(--success); }
+    .label-norag { color: var(--warning); }
+    .doc-text-compare {
+      white-space: pre-wrap;
+      font-size: .83rem;
+      line-height: 1.75;
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      max-height: 300px;
       overflow-y: auto;
     }
+    .doc-text-compare.rag-border   { border-color: #6ee7b7; }
+    .doc-text-compare.norag-border { border-color: #fcd34d; }
 
-    .error { color: #c0392b; font-weight: 600; }
+    /* ── Історія ── */
+    .history-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .history-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 14px 16px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      font-size: .87rem;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .history-item:hover {
+      border-color: rgba(37,99,235,.25);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(15,23,42,.05);
+      background: #f8fbff;
+    }
+    .history-item .hi-type {
+      font-weight: 700;
+      color: var(--text);
+      text-transform: capitalize;
+    }
+    .history-item .hi-type a {
+      color: inherit;
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .history-item .hi-type a:hover { color: var(--primary); }
+    .history-item .hi-time {
+      color: var(--muted);
+      font-size: .78rem;
+      white-space: nowrap;
+    }
+    .history-item .hi-file {
+      color: var(--muted);
+      font-size: .78rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .history-item .hi-id {
+      color: var(--muted);
+      font-size: .78rem;
+      white-space: nowrap;
+    }
+    .history-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .history-action {
+      color: var(--muted);
+      font-size: 1rem;
+      transition: color .2s;
+      text-decoration: none;
+    }
+    .history-action:hover { color: var(--primary); }
+    .history-action.download:hover { color: var(--success); }
+    .no-history { color: var(--muted); font-size: .83rem; padding: 8px 0; }
+
+    /* ── Статистика ── */
+    .stats-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .stats-total {
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #eff6ff;
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+    }
+    .btn-clear-history {
+      font-size: .75rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #dc2626;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-clear-history:hover { background: #fecaca; }
+    /* Перемикач версії в режимі порівняння */
+    .cmp-version-selector {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 10px 0 6px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      font-size: .83rem;
+    }
+    .cmp-ver-label { color: var(--muted); font-weight: 600; }
+    .cmp-ver-radio { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .cmp-ver-radio input { cursor: pointer; accent-color: var(--primary); }
+    .stat-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 82px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 560px) { .stat-row { grid-template-columns: 100px 1fr 56px; } }
+    .stat-label {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--text-2);
+      text-align: left;
+      text-transform: capitalize;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .stat-bar-wrap {
+      background: #eff6ff;
+      border-radius: 999px;
+      height: 16px;
+      overflow: hidden;
+    }
+    .stat-bar {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width .7s cubic-bezier(.34,1.56,.64,1);
+      box-shadow: inset 0 1px 2px rgba(255,255,255,.35);
+    }
+    .stat-count {
+      font-size: .75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── Модальне вікно ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      width: 100%;
+      max-width: 780px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+      gap: 12px;
+    }
+    .modal-title {
+      font-size: .88rem;
+      font-weight: 700;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: var(--muted);
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background .15s, color .15s;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: #fee2e2; color: var(--danger); }
+    .modal-body { overflow-y: auto; flex: 1; }
+    .modal-body iframe { width: 100%; min-height: 520px; border: none; display: block; }
+    .modal-loading {
+      padding: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* ── Стани visibility ── */
+    #resultContent  { display: none; }
+    #compareContent { display: none; }
   </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
 
 <header>
-  <h1>Генератор військових документів</h1>
-  <p>Перетворює тези або нотатки на офіційний текст за ДСТУ 4163:2020</p>
+  <div class="header-icon">🤖</div>
+  <div>
+    <h1>СИСТЕМА АВТОМАТИЧНОЇ ГЕНЕРАЦІЇ ЗВІТНОЇ ТА МЕТОДИЧНОЇ ДОКУМЕНТАЦІЇ</h1>
+    <p>з використанням AI-асистентів · ДСТУ 4163:2020</p>
+  </div>
+  <div class="header-badges">
+    <span class="header-badge"><span class="header-badge-icon">🦙</span>Llama 3</span>
+    <span class="header-badge"><span class="header-badge-icon">☕</span>Spring Boot</span>
+    <span class="header-badge"><span class="header-badge-icon">🔗</span>LangChain4j</span>
+  </div>
 </header>
 
-<div class="card">
-  <label for="notes">Введіть тези / нотатки</label>
-  <textarea id="notes" placeholder="Наприклад: рапорт від Коваленко, прошу відпустку 3 доби з 25.04.2026, причина — сімейні обставини..."></textarea>
+<div class="layout">
 
-  <div class="examples">
-    Приклади:
-    <span onclick="fill('rapor')">Рапорт</span>
-    <span onclick="fill('nakaz')">Наказ</span>
-    <span onclick="fill('zvit')">Звіт</span>
+  <!-- ── Ліва панель ── -->
+  <div class="card">
+    <div class="card-title">Введіть тези або нотатки</div>
+
+    <div id="dropZone" class="textarea-wrap" style="position:relative;">
+      <div id="dropOverlay" class="drop-overlay hidden" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);border-radius:18px;z-index:5;">
+        <div class="loader">Завантаження файлу…</div>
+      </div>
+      <div class="drop-inner" style="border:2px dashed rgba(15,23,42,.06);border-radius:12px;padding:10px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v10" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 7l4-4 4 4" stroke="#374151" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div>
+              <div style="font-weight:700;color:var(--text);">Перетягніть файл сюди або натисніть "Огляд"</div>
+              <div style="font-size:.82rem;color:var(--muted)">Підтримувані формати: .txt, .docx, .pdf</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <input id="fileInput" type="file" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFileInput(event)">
+            <button class="btn-generate" style="padding:8px 12px;font-size:.86rem;" onclick="document.getElementById('fileInput').click()">Огляд</button>
+          </div>
+        </div>
+      </div>
+
+      <textarea id="notes"
+        placeholder="Опишіть документ вільним текстом — тип документа, автора, тему, ключові пункти та дату..."
+        oninput="updateCharCount(); detectDocTypeSuggestion();"></textarea>
+      <span class="char-count" id="charCount">0 симв.</span>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-field">
+        <label for="authorInput">Автор / посада</label>
+        <input type="text" id="authorInput" placeholder="майор Іваненко І.І., старший викладач">
+      </div>
+      <div class="meta-field">
+        <label for="recipientInput">Кому</label>
+        <input type="text" id="recipientInput" placeholder="начальнику кафедри, ректору">
+      </div>
+      <div class="meta-field">
+        <label for="dateInput">Дата</label>
+        <input type="text" id="dateInput" placeholder="15.01.2025">
+      </div>
+      <div class="meta-field meta-field--wide">
+        <label for="subjectInput">Коротка тема</label>
+        <input type="text" id="subjectInput" placeholder="тема документа одним реченням">
+      </div>
+    </div>
+
+    <div class="selected-document-type">
+      <span>Обраний тип документа:</span>
+      <span class="doc-type-pill" id="currentDocType">Звіт</span>
+    </div>
+
+    <div class="doc-type-group">
+      <div class="group-title">ВИБІР ТИПУ ДОКУМЕНТА</div>
+      <div class="doc-type-cards grid grid-cols-2 gap-3">
+        <label class="type-card" data-type="Звіт" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Звіт" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">📄</div>
+          <div>
+            <div class="type-card-title">Звіт</div>
+            <div class="type-card-meta">Звіт викладацької та навчальної діяльності.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+        <label class="type-card" data-type="Методична розробка" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Методична розробка" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">📚</div>
+          <div>
+            <div class="type-card-title">Методична розробка</div>
+            <div class="type-card-meta">Методичний матеріал або навчальна розробка.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+        <label class="type-card" data-type="План-конспект" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="План-конспект" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">🗒</div>
+          <div>
+            <div class="type-card-title">План-конспект</div>
+            <div class="type-card-meta">План-заняття або конспект лекції.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+        <label class="type-card" data-type="Пояснювальна записка" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Пояснювальна записка" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">📝</div>
+          <div>
+            <div class="type-card-title">Пояснювальна</div>
+            <div class="type-card-meta">Офіційна пояснювальна записка.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="doc-type-group">
+      <div class="group-title">ВІЙСЬКОВІ ДОКУМЕНТИ</div>
+      <div class="doc-type-cards grid grid-cols-2 gap-3">
+        <label class="type-card" data-type="Рапорт" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Рапорт" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">🎖</div>
+          <div>
+            <div class="type-card-title">Рапорт</div>
+            <div class="type-card-meta">Службовий рапорт командиру чи керівнику.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+        <label class="type-card" data-type="Доповідна записка" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Доповідна записка" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">📌</div>
+          <div>
+            <div class="type-card-title">Доповідна</div>
+            <div class="type-card-meta">Офіційне повідомлення керівництву.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+        <label class="type-card" data-type="Наказ" onclick="selectCard(this)">
+          <input type="radio" name="documentType" value="Наказ" class="sr-only" onchange="onDocumentTypeSelect(event)">
+          <div class="type-card-icon">⚡</div>
+          <div>
+            <div class="type-card-title">Наказ</div>
+            <div class="type-card-meta">Офіційний наказ або розпорядження.</div>
+          </div>
+          <div class="recommended-badge hidden" aria-hidden>Рекомендовано ШІ</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="compare-toggle-wrap" id="compareToggleWrap">
+      <span class="compare-toggle-label">🔬 Режим порівняння</span>
+      <label class="switch-control" for="compareMode">
+        <input type="checkbox" id="compareMode" class="switch-input" onchange="onCompareModeChange()" aria-label="Режим порівняння">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+      </label>
+      <span class="compare-toggle-hint">з RAG / без RAG</span>
+    </div>
+
+    <button type="button" class="btn-generate" id="btnGen" onclick="generate()">
+      <span class="btn-icon">✨</span>
+      <span>Згенерувати документ</span>
+    </button>
+
+    <div class="pipeline" id="pipeline">
+      <div class="step" id="s1"><div class="dot"></div>Аналіз</div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="s2"><div class="dot"></div>RAG</div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="s3"><div class="dot"></div>Генерація</div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="s4"><div class="dot"></div>Збереження</div>
+    </div>
+
+    <div class="status-bar" id="statusBar"></div>
   </div>
 
-  <div class="actions">
-    <button type="button" id="btnText" onclick="generate()">Згенерувати документ</button>
-    <button type="button" id="btnClear" onclick="clearAll()">Очистити</button>
+  <!-- ── Права панель ── -->
+  <div class="card">
+    <div class="card-title">Результат</div>
+
+    <div class="result-empty" id="emptyState">
+      <div class="empty-icon">📄</div>
+      <span>Документ з'явиться тут після генерації</span>
+    </div>
+
+    <div id="resultContent">
+      <div class="doc-meta">
+        <span class="badge" id="docTypeBadge"></span>
+        <span class="timing" id="timingBadge"></span>
+      </div>
+      <div class="rag-panel hidden" id="ragContextPanel">
+        <div class="rag-label">RAG контекст</div>
+          <div class="rag-text" id="ragText"></div>
+      </div>
+        <div class="metrics-row" id="metricsRow"></div>
+        <div class="doc-text" id="docText"></div>
+        <div id="docSkeleton" class="hidden" aria-hidden>
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px;">
+            <div class="skeleton skeleton-avatar"></div>
+            <div style="flex:1">
+              <div class="skeleton skeleton-line skeleton-lg" style="width:70%"></div>
+              <div class="skeleton skeleton-line" style="width:88%"></div>
+              <div class="skeleton skeleton-line" style="width:92%"></div>
+              <div class="skeleton skeleton-line" style="width:60%"></div>
+            </div>
+          </div>
+        </div>
+      <div class="btn-row">
+        <button type="button" id="previewBtn" class="btn-preview hidden"
+                onclick="openPreview(currentFile)">👁 Переглянути</button>
+        <a id="downloadLink" href="#" class="btn-download hidden">⬇ Завантажити .docx</a>
+        <button type="button" id="copyBtn" class="btn-copy hidden"
+                onclick="copyText()">📋 Копіювати</button>
+      </div>
+    </div>
+
+    <div id="compareContent">
+      <div class="compare-header">
+        <span class="compare-badge">🔬 Порівняння</span>
+        <span class="badge" id="cmpTypeBadge"></span>
+        <span class="timing" id="cmpTimingBadge"></span>
+      </div>
+      <div class="rag-panel hidden" id="cmpRagContextPanel">
+        <div class="rag-label">RAG контекст</div>
+        <div class="rag-text" id="cmpRagText"></div>
+      </div>
+      <div class="metrics-row" id="cmpMetricsRow"></div>
+      <div class="compare-cols">
+        <div>
+          <div class="compare-col-label label-rag">✅ З RAG (Інструкція ЗСУ)</div>
+            <div class="doc-text-compare rag-border" id="cmpTextWithRag"></div>
+            <div id="cmpSkeletonWith" class="hidden" aria-hidden>
+              <div class="skeleton skeleton-line skeleton-lg" style="width:95%"></div>
+              <div class="skeleton skeleton-line" style="width:88%"></div>
+              <div class="skeleton skeleton-line" style="width:80%"></div>
+            </div>
+          <div class="btn-row" style="margin-top:10px;">
+            <button type="button" class="btn-copy" onclick="copyPanelText('cmpTextWithRag')">📋 Скопіювати</button>
+            <a id="downloadWithRag" href="#" class="btn-download hidden">⬇ Завантажити .docx</a>
+          </div>
+        </div>
+        <div>
+          <div class="compare-col-label label-norag">⬜ Без RAG (базова модель)</div>
+          <div class="doc-text-compare norag-border" id="cmpTextWithoutRag"></div>
+          <div id="cmpSkeletonWithout" class="hidden" aria-hidden>
+            <div class="skeleton skeleton-line skeleton-lg" style="width:90%"></div>
+            <div class="skeleton skeleton-line" style="width:84%"></div>
+            <div class="skeleton skeleton-line" style="width:72%"></div>
+          </div>
+          <div class="btn-row" style="margin-top:10px;">
+            <button type="button" class="btn-copy" onclick="copyPanelText('cmpTextWithoutRag')">📋 Скопіювати</button>
+            <a id="downloadNoRag" href="#" class="btn-download hidden">⬇ Завантажити .docx</a>
+          </div>
+        </div>
+      </div>
+      <div class="cmp-version-selector" id="cmpVersionSelector">
+        <span class="cmp-ver-label">Версія для дій:</span>
+        <label class="cmp-ver-radio">
+          <input type="radio" name="cmpVer" value="rag" checked onchange="onCmpVersionChange()">
+          З RAG
+        </label>
+        <label class="cmp-ver-radio">
+          <input type="radio" name="cmpVer" value="norag" onchange="onCmpVersionChange()">
+          Без RAG
+        </label>
+      </div>
+      <div class="btn-row">
+        <button type="button" id="cmpPreviewBtn" class="btn-preview hidden"
+                onclick="openCmpPreview()">👁 Переглянути</button>
+        <a id="cmpDownloadLink" href="#" class="btn-download hidden">⬇ Завантажити .docx</a>
+      </div>
+    </div>
   </div>
 
-  <div class="status">
-    <div class="spinner" id="spinner"></div>
-    <span id="statusMsg"></span>
-  </div>
+</div>
 
-  <div class="result-box" id="resultBox">
-    <label>Згенерований документ</label>
-    <div class="result-text" id="resultText"></div>
+<!-- ── Нижні блоки ── -->
+<div class="section-wrap">
+  <div class="bottom-grid">
+
+    <!-- Історія -->
+    <div class="card">
+      <div class="stats-header">
+        <div class="card-title card-title--inline">Остання історія</div>
+        <button type="button" class="btn-clear-history" onclick="clearHistory()">🗑 Очистити</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="no-history">Документи з'являться тут після генерації.</div>
+      </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="card">
+      <div class="stats-header">
+        <div class="card-title card-title--inline">Статистика генерації</div>
+        <span class="stats-total" id="statsTotal">Всього: 0</span>
+      </div>
+      <div id="statsContent">
+        <div class="no-history">Статистика з'явиться після першої генерації.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Модальне вікно -->
+<div class="modal-overlay" id="previewModal" onclick="onOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Перегляд документа</span>
+      <button type="button" class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div class="modal-loading">Завантаження…</div>
+    </div>
   </div>
 </div>
 
 <script>
+  let currentFile      = null;
+  let currentFileNoRag = null;
+
+  /* ── Приклади ── */
   const EXAMPLES = {
-    rapor: 'Рапорт від підполковника Коваленко О.В., 23.04.2026. Прошу надати відпустку тривалістю 3 доби з 25 квітня 2026 року у зв\'язку з сімейними обставинами (хвороба матері). Адресовано командиру в/ч А0000 полковнику Шевченку М.І.',
-    nakaz: 'Наказ командира в/ч А1234 від 21.04.2026. Призначити капітана Мельника В.П. на посаду начальника зв\'язку з 22.04.2026. Підстава: рапорт особового складу та рішення атестаційної комісії.',
-    zvit: 'Звіт про виконання бойового завдання за квітень 2026. Підрозділ виконав 12 рейдів, втрати відсутні, техніка справна на 100%. Автор: старший лейтенант Бойко Д.С., дата 21.04.2026.'
+    zvit:   'Звіт викладача Іваненка І.І. начальнику кафедри інформаційних технологій за І семестр 2024/2025 навчального року. Проведено 14 лекцій та 10 лабораторних занять. Опубліковано 2 наукові статті у фахових виданнях. Керував 3 дипломними роботами. Дата: 15.01.2025.',
+    metod:  'Методична розробка старшого викладача Петренко О.В. з дисципліни «Інформаційні технології» для курсантів 2 курсу. Тема: Застосування AI у військовому документообігу. Містить теоретичний матеріал, 5 практичних завдань та тести.',
+    plan:   'План-конспект лекційного заняття викладача Сидоренко М.С. з дисципліни «Військова інформатика». Тема: Великі мовні моделі та їх застосування. Мета: ознайомити курсантів з архітектурою LLM. Тривалість 90 хвилин, 3-й курс.',
+    poyasn: 'Пояснювальна записка курсанта Коваль Д.О. до дипломної роботи «Система автоматичної генерації документації з використанням AI-асистентів». Науковий керівник — доцент Бойко А.В. Кафедра комп\'ютерних наук, 2026 рік.',
+    rapor:  'Рапорт старшого лейтенанта Шевченка В.М. командиру частини А1234. Прошу надати відпустку тривалістю 5 діб з 05.05.2026 у зв\'язку з сімейними обставинами. Дата подачі: 01.05.2026.',
+    dopov:  'Доповідна записка начальника кафедри інформаційних технологій полковника Мельника О.І. ректору університету. Прошу виділити фінансування на оновлення комп\'ютерного класу у сумі 200 000 грн. Підстава: моральне та фізичне зношення обладнання.',
+    nakaz:  'Наказ начальника університету від 01.05.2026. Призначити підполковника Коваленка С.В. на посаду начальника кафедри інформаційних технологій з 05.05.2026. Підстава: рішення вченої ради від 28.04.2026.'
   };
 
-  function fill(key) {
-    document.getElementById('notes').value = EXAMPLES[key];
-  }
+  function onDocumentTypeSelect(event) {
+    const cards = document.querySelectorAll('.type-card');
+    cards.forEach(card => card.classList.toggle('selected', card.contains(event.target)));
 
-  function clearAll() {
-    document.getElementById('notes').value = '';
-    document.getElementById('resultBox').style.display = 'none';
-    document.getElementById('statusMsg').textContent = '';
-  }
+    const sampleMap = {
+      'Звіт': 'zvit',
+      'Методична розробка': 'metod',
+      'План-конспект': 'plan',
+      'Пояснювальна записка': 'poyasn',
+      'Рапорт': 'rapor',
+      'Доповідна записка': 'dopov',
+      'Наказ': 'nakaz'
+    };
+    const selected = event.target.value;
+    document.getElementById('currentDocType').textContent = selected;
 
-  async function generate() {
-    const notes = document.getElementById('notes').value.trim();
-    if (!notes) {
-      setStatus('Введіть текст нотаток.', true);
-      return;
+    const notes = document.getElementById('notes');
+    const currentText = notes.value.trim();
+    const isSampleText = Object.values(EXAMPLES).some(sample => sample === currentText);
+    if (sampleMap[selected] && (!currentText || isSampleText)) {
+      notes.value = EXAMPLES[sampleMap[selected]];
+      updateCharCount();
     }
+  }
 
-    setLoading(true);
+  function updateCharCount() {
+    const n = document.getElementById('notes').value.length;
+    document.getElementById('charCount').textContent = n + ' симв.';
+  }
+
+  function buildGenerationPayload() {
+    const notes = document.getElementById('notes').value.trim();
+    const author = document.getElementById('authorInput').value.trim();
+    const recipient = document.getElementById('recipientInput').value.trim();
+    const date = document.getElementById('dateInput').value.trim();
+    const subject = document.getElementById('subjectInput').value.trim();
+    const extraMetadata = [];
+
+    if (author) extraMetadata.push(`Автор: ${author}`);
+    if (recipient) extraMetadata.push(`Кому: ${recipient}`);
+    if (date) extraMetadata.push(`Дата: ${date}`);
+    if (subject) extraMetadata.push(`Тема: ${subject}`);
+
+    return [notes, ...extraMetadata].filter(Boolean).join('\n');
+  }
+
+  /* ── Drag & Drop / File parsing (front-end) ── */
+  function initDragDrop() {
+    const dz = document.getElementById('dropZone');
+    const input = document.getElementById('fileInput');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', e => { dz.classList.remove('drag-over'); });
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFileDrop(e.dataTransfer.files[0]); });
+    input.addEventListener('change', e => { if (e.target.files && e.target.files[0]) handleFileDrop(e.target.files[0]); });
+  }
+
+  function handleFileInput(e) {
+    if (e.target.files && e.target.files[0]) handleFileDrop(e.target.files[0]);
+  }
+
+  async function handleFileDrop(file) {
+    if (!file) return;
+    const overlay = document.getElementById('dropOverlay');
+    overlay.classList.remove('hidden');
+    const name = (file.name || '').toLowerCase();
 
     try {
-      const resp = await fetch('/api/documents/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body: notes
-      });
-
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(err || `HTTP ${resp.status}`);
+      if (name.endsWith('.txt')) {
+        const reader = new FileReader();
+        reader.onload = () => { document.getElementById('notes').value = reader.result || ''; updateCharCount(); overlay.classList.add('hidden'); detectDocTypeSuggestion(); };
+        reader.readAsText(file, 'utf-8');
+        return;
       }
 
-      const text = await resp.text();
+      // POST file to server parse endpoint
+      const form = new FormData();
+      form.append('file', file, file.name);
 
-      // Витягуємо шлях до .docx із першого рядка відповіді
-      const lines = text.split('\n');
-      const pathLine = lines[0].startsWith('Документ збережено:') ? lines[0] : '';
-      const docText  = pathLine ? lines.slice(2).join('\n').trim() : text;
+      // show skeleton while parsing
+      setLoading(true, false);
 
-      document.getElementById('resultText').textContent = docText;
-      document.getElementById('resultBox').style.display = 'block';
+      const resp = await fetch('/api/documents/parse', { method: 'POST', body: form });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(()=>'');
+        setStatus('Парсинг файлу не вдався: ' + resp.status + ' ' + txt, true);
+        overlay.classList.add('hidden');
+        setLoading(false, false);
+        return;
+      }
 
-      const statusMsg = pathLine
-        ? `Документ згенеровано. ${pathLine}`
-        : 'Документ згенеровано.';
-      setStatus(statusMsg);
-
+      const parsed = await resp.text();
+      if (parsed && parsed.trim()) {
+        document.getElementById('notes').value = parsed.trim();
+        updateCharCount();
+        detectDocTypeSuggestion();
+        setStatus('Файл розпізнано та підставлено у поле нотаток');
+      } else {
+        setStatus('Парсер повернув порожній текст', true);
+      }
     } catch (e) {
-      setStatus('Помилка: ' + e.message, true);
+      console.error(e);
+      setStatus('Помилка при парсингу файлу: ' + e.message, true);
     } finally {
-      setLoading(false);
+      overlay.classList.add('hidden');
+      setLoading(false, false);
     }
   }
 
-  function setLoading(on) {
-    document.getElementById('spinner').style.display = on ? 'block' : 'none';
-    ['btnText', 'btnClear'].forEach(id =>
-      document.getElementById(id).disabled = on);
-    if (on) setStatus('Генерація документа… (може зайняти до 2 хв)');
+  /* ── AI-підказки для типу документа ── */
+  function detectDocTypeSuggestion() {
+    const text = document.getElementById('notes').value.toLowerCase();
+    const rules = [
+      {k: ['наказ','наказую'], t: 'Наказ'},
+      {k: ['рапорт'], t: 'Рапорт'},
+      {k: ['звіт','звiт','звіt','звiтую','звіту'], t: 'Звіт'},
+      {k: ['план-конспект','тема заняття','конспект'], t: 'План-конспект'},
+      {k: ['методична','методичний'], t: 'Методична розробка'}
+    ];
+    // clear previous
+    document.querySelectorAll('.type-card').forEach(c => { c.classList.remove('recommended'); c.querySelector('.recommended-badge')?.classList.add('hidden'); });
+    for (const r of rules) {
+      if (r.k.some(kw => text.includes(kw))) {
+        const card = Array.from(document.querySelectorAll('.type-card')).find(c => c.dataset.type === r.t);
+        if (card) { card.classList.add('recommended'); card.querySelector('.recommended-badge')?.classList.remove('hidden'); }
+        break;
+      }
+    }
+  }
+
+  function selectCard(el) {
+    // emulate radio select
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    // micro-interaction: quick pulse
+    el.classList.remove('pulse-on-select');
+    void el.offsetWidth;
+    el.classList.add('pulse-on-select');
+    setTimeout(() => el.classList.remove('pulse-on-select'), 420);
+    const val = el.dataset.type;
+    const input = el.querySelector('input[name="documentType"]');
+    if (input) { input.checked = true; onDocumentTypeSelect({ target: input }); }
+  }
+
+  /* ── Split diff highlighting (naive) ── */
+  function computeHighlightedHtml(base, withRag) {
+    if (!withRag) return '';
+    const baseSet = new Set((base||'').toLowerCase().split(/\W+/).filter(Boolean));
+    return withRag.split(/(\s+)/).map(token => {
+      const clean = token.replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
+      if (clean && !baseSet.has(clean) && clean.length>2) {
+        return `<mark style="background:rgba(132,204,22,.18);padding:0 2px;border-radius:4px;">${escapeHtml(token)}</mark>`;
+      }
+      return escapeHtml(token);
+    }).join('');
+  }
+
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function copyPanelText(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const text = el.innerText || el.textContent || '';
+    navigator.clipboard.writeText(text).then(()=>{ setStatus('Скопійовано в буфер'); setTimeout(()=>setStatus(''),2000); });
+  }
+
+
+  /* ── Порівняння ── */
+  function onCompareModeChange() {
+    const active = document.getElementById('compareMode').checked;
+    document.getElementById('compareToggleWrap').classList.toggle('active', active);
+    const btn = document.getElementById('btnGen');
+    btn.classList.toggle('compare-active', active);
+    btn.textContent = active ? '🔬 Порівняти з RAG / без RAG' : '✨ Згенерувати документ';
+  }
+
+  /* ── Конвеєр ── */
+  const STEPS = ['s1','s2','s3','s4'];
+  let stepTimer = null;
+
+  function startPipeline() {
+    STEPS.forEach(id => document.getElementById(id).classList.remove('active','done'));
+    let i = 0;
+    stepTimer = setInterval(() => {
+      if (i > 0) document.getElementById(STEPS[i-1]).classList.replace('active','done');
+      if (i < STEPS.length) { document.getElementById(STEPS[i]).classList.add('active'); i++; }
+      else clearInterval(stepTimer);
+    }, 800);
+  }
+
+  function finishPipeline() {
+    clearInterval(stepTimer);
+    STEPS.forEach(id => {
+      document.getElementById(id).classList.remove('active');
+      document.getElementById(id).classList.add('done');
+    });
+  }
+
+  function resetPipeline() {
+    clearInterval(stepTimer);
+    STEPS.forEach(id => document.getElementById(id).classList.remove('active','done'));
+  }
+
+  /* ── Генерація ── */
+  async function generate() {
+    const payload = buildGenerationPayload();
+    if (!payload.trim()) { setStatus('Введіть текст нотаток або метадані документа.', true); return; }
+
+    const compareMode = document.getElementById('compareMode').checked;
+    const url = '/api/documents/generate' + (compareMode ? '?mode=compare' : '');
+
+    rippleEffect(document.getElementById('btnGen'));
+    setLoading(true, compareMode);
+    startPipeline();
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: payload
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+
+      const data = await resp.json();
+      finishPipeline();
+      if (compareMode && data.textWithRag != null) showCompareResult(data);
+      else showResult(data);
+      loadHistory();
+      refreshStats();
+      setStatus('');
+    } catch (e) {
+      resetPipeline();
+      setStatus('Помилка: ' + e.message, true);
+    } finally {
+      setLoading(false, compareMode);
+    }
+  }
+
+  /* ── Відображення ── */
+  function renderMetrics(data, id) {
+    const rag  = data.ragContextFound;
+    const n    = data.ragFragmentsUsed ?? 0;
+    const type = data.detectedDocumentType || data.documentType || '';
+    document.getElementById(id).innerHTML =
+      `<span class="metric-chip ${rag ? 'ok' : 'warn'}">${rag ? '✅' : '⬜'} RAG: ${n} фрагм.</span>
+       <span class="metric-chip">🏷 ${type}</span>`;
+  }
+
+  function showResult(data) {
+    document.getElementById('emptyState').style.display     = 'none';
+    document.getElementById('compareContent').style.display = 'none';
+    document.getElementById('resultContent').style.display  = 'block';
+
+    document.getElementById('docTypeBadge').textContent = data.documentType || 'документ';
+    document.getElementById('timingBadge').textContent  = '⏱ ' + (data.processingTimeMs/1000).toFixed(1) + ' с';
+    renderMetrics(data, 'metricsRow');
+    document.getElementById('docText').textContent = data.text || '';
+
+    const ragPanel = document.getElementById('ragContextPanel');
+    if (data.ragContext) {
+      document.getElementById('ragText').textContent = data.ragContext;
+      ragPanel.classList.remove('hidden');
+    } else {
+      ragPanel.classList.add('hidden');
+      document.getElementById('ragText').textContent = '';
+    }
+
+    if (data.fileName) {
+      currentFile = data.fileName;
+      const dl = document.getElementById('downloadLink');
+      dl.href = `/api/documents/download?file=${encodeURIComponent(data.fileName)}`;
+      dl.classList.remove('hidden');
+      document.getElementById('previewBtn').classList.remove('hidden');
+      document.getElementById('copyBtn').classList.remove('hidden');
+    }
+  }
+
+  function showCompareResult(data) {
+    document.getElementById('emptyState').style.display    = 'none';
+    document.getElementById('resultContent').style.display  = 'none';
+    document.getElementById('compareContent').style.display = 'block';
+
+    document.getElementById('cmpTypeBadge').textContent   = data.documentType || 'документ';
+    document.getElementById('cmpTimingBadge').textContent = '⏱ ' + (data.processingTimeMs/1000).toFixed(1) + ' с';
+    renderMetrics(data, 'cmpMetricsRow');
+
+    // Highlight differences: naive token-based
+    const base = data.textWithoutRag || '';
+    const withRag = data.textWithRag || '';
+    document.getElementById('cmpTextWithRag').innerHTML = computeHighlightedHtml(base, withRag);
+    document.getElementById('cmpTextWithoutRag').innerHTML = escapeHtml(base);
+
+    const cmpRagPanel = document.getElementById('cmpRagContextPanel');
+    if (data.ragContext) {
+      document.getElementById('cmpRagText').textContent = data.ragContext;
+      cmpRagPanel.classList.remove('hidden');
+    } else {
+      cmpRagPanel.classList.add('hidden');
+      document.getElementById('cmpRagText').textContent = '';
+    }
+
+    currentFile      = data.fileName          || null;
+    currentFileNoRag = data.fileNameWithoutRag || null;
+
+    // Скидаємо перемикач на "З RAG"
+    document.querySelector('input[name="cmpVer"][value="rag"]').checked = true;
+
+    // Preview and per-panel downloads
+    if (currentFile || currentFileNoRag) {
+      document.getElementById('cmpPreviewBtn').classList.remove('hidden');
+      document.getElementById('cmpVersionSelector').style.display = 'flex';
+
+      const dlWith = document.getElementById('downloadWithRag');
+      const dlNo   = document.getElementById('downloadNoRag');
+      if (currentFile) { dlWith.href = `/api/documents/download?file=${encodeURIComponent(currentFile)}`; dlWith.classList.remove('hidden'); }
+      else dlWith.classList.add('hidden');
+      if (currentFileNoRag) { dlNo.href = `/api/documents/download?file=${encodeURIComponent(currentFileNoRag)}`; dlNo.classList.remove('hidden'); }
+      else dlNo.classList.add('hidden');
+    }
+  }
+
+  function onCmpVersionChange() { updateCmpDownloadLink(); }
+
+  function updateCmpDownloadLink() {
+    const ver  = document.querySelector('input[name="cmpVer"]:checked')?.value;
+    const file = ver === 'norag' ? currentFileNoRag : currentFile;
+    const dl   = document.getElementById('cmpDownloadLink');
+    if (file) dl.href = `/api/documents/download?file=${encodeURIComponent(file)}`;
+  }
+
+  function openCmpPreview() {
+    const ver  = document.querySelector('input[name="cmpVer"]:checked')?.value;
+    const file = ver === 'norag' ? currentFileNoRag : currentFile;
+    if (file) openPreview(file);
+  }
+
+  /* ── Копіювати ── */
+  function copyText() {
+    const text = document.getElementById('docText').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✅ Скопійовано';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '📋 Копіювати'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  /* ── Історія (з БД) ── */
+  async function loadHistory() {
+    try {
+      const resp = await fetch('/api/documents/history');
+      if (!resp.ok) return;
+      renderHistory(await resp.json());
+    } catch (_) {}
+  }
+
+  function renderHistory(items) {
+    const list = document.getElementById('historyList');
+    if (!items || !items.length) {
+      list.innerHTML = '<div class="no-history">Документи з\'являться тут після генерації.</div>';
+      return;
+    }
+    list.innerHTML = items.map(h => {
+      const dt   = new Date(h.createdAt);
+      const time = dt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+      const date = dt.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+      const cmp  = h.compareMode ? ' 🔬' : '';
+      const fileId = h.documentId || h.id || h.fileName || '';
+      const safeFileName = (h.fileName || '').replace(/\\/g,'\\\\').replace(/'/g,'\\\'');
+      const matchNum = (h.fileName && (h.fileName.match(/(\d+)/)||[])[0]) || '';
+      const label = `${h.documentType || 'Документ'}${matchNum ? ' №' + matchNum : ''}`;
+      return `<div class="history-item">
+        <span class="hi-type"><span class="history-badge">${label}${cmp}</span></span>
+        <span class="hi-time">${date} ${time}</span>
+        <span class="hi-file" title="${fileId}">${h.fileName || ''}</span>
+        <span class="history-actions">
+          <a class="history-action" href="#" onclick="openPreview('${safeFileName}');return false;" title="Переглянути">👁</a>
+          <a class="history-action" href="/api/documents/download?file=${encodeURIComponent(h.fileName)}" title="Завантажити">⬇</a>
+          <a class="history-action" href="#" onclick="deleteDocument('${encodeURIComponent(h.fileName)}');return false;" title="Видалити">🗑</a>
+        </span>
+      </div>`;
+    }).join('');
+  }
+
+  async function deleteDocument(encodedFile) {
+    if (!confirm('Видалити файл з сервера?')) return;
+    try {
+      await fetch('/api/documents/delete?file=' + encodedFile, { method: 'DELETE' });
+      loadHistory();
+      refreshStats();
+      setStatus('Видалено');
+    } catch (e) { setStatus('Помилка видалення', true); }
+  }
+
+  async function clearHistory() {
+    if (!confirm('Очистити всю історію генерацій?')) return;
+    await fetch('/api/documents/history', { method: 'DELETE' });
+    loadHistory();
+    refreshStats();
+  }
+
+  loadHistory();
+  const initialType = document.querySelector('input[name="documentType"]:checked')?.value;
+  if (initialType) {
+    document.getElementById('currentDocType').textContent = initialType;
+  }
+  initDragDrop();
+  detectDocTypeSuggestion();
+
+  /* ── Утиліти ── */
+  function setLoading(on, compare) {
+    const btn = document.getElementById('btnGen');
+    btn.disabled = on;
+    if (on) {
+      btn.textContent = compare ? '⏳ Порівняння… (2-5 хв)' : '⏳ Генерація… (1-3 хв)';
+      setStatus('Обробка запиту AI-агентами…');
+    } else {
+      btn.textContent = compare ? '🔬 Порівняти з RAG / без RAG' : '✨ Згенерувати документ';
+    }
+  }
+
+  // show/hide skeleton placeholders when loading
+  function toggleSkeleton(on, compare) {
+    const docSkeleton = document.getElementById('docSkeleton');
+    const docText = document.getElementById('docText');
+    const resultContent = document.getElementById('resultContent');
+    const compareContent = document.getElementById('compareContent');
+    const cmpSkeletonWith = document.getElementById('cmpSkeletonWith');
+    const cmpSkeletonWithout = document.getElementById('cmpSkeletonWithout');
+
+    if (on) {
+      if (compare) {
+        // show compare skeletons
+        compareContent.style.display = 'block';
+        document.getElementById('cmpTextWithRag').classList.add('hidden');
+        document.getElementById('cmpTextWithoutRag').classList.add('hidden');
+        cmpSkeletonWith.classList.remove('hidden');
+        cmpSkeletonWithout.classList.remove('hidden');
+        resultContent.style.display = 'none';
+      } else {
+        // show single result skeleton
+        resultContent.style.display = 'block';
+        docText.classList.add('hidden');
+        docSkeleton.classList.remove('hidden');
+        compareContent.style.display = 'none';
+      }
+    } else {
+      // hide all skeletons and restore
+      docSkeleton.classList.add('hidden');
+      docText.classList.remove('hidden');
+      cmpSkeletonWith.classList.add('hidden');
+      cmpSkeletonWithout.classList.add('hidden');
+      document.getElementById('cmpTextWithRag').classList.remove('hidden');
+      document.getElementById('cmpTextWithoutRag').classList.remove('hidden');
+    }
+  }
+
+  // integrate skeleton toggling with setLoading
+  const originalSetLoading = setLoading;
+  const _setLoading = setLoading; // preserve
+  setLoading = function(on, compare){
+    _setLoading(on, compare);
+    toggleSkeleton(on, compare);
+  };
+
+  // Ripple effect for buttons
+  function rippleEffect(btn) {
+    if (!btn) return;
+    btn.classList.add('ripple');
+    const rect = btn.getBoundingClientRect();
+    const span = document.createElement('span');
+    span.className = 'ripple-effect';
+    const size = Math.max(rect.width, rect.height);
+    span.style.width = span.style.height = size + 'px';
+    // support optional event coords; default to center
+    let cx = rect.left + rect.width/2;
+    let cy = rect.top + rect.height/2;
+    if (window._lastPointerEvent && window._lastPointerEvent.clientX) {
+      cx = window._lastPointerEvent.clientX; cy = window._lastPointerEvent.clientY;
+    }
+    span.style.left = (cx - rect.left - size/2) + 'px';
+    span.style.top = (cy - rect.top - size/2) + 'px';
+    btn.appendChild(span);
+    setTimeout(()=>{ span.remove(); }, 700);
   }
 
   function setStatus(msg, isError = false) {
-    const el = document.getElementById('statusMsg');
+    const el = document.getElementById('statusBar');
     el.textContent = msg;
-    el.className = isError ? 'error' : '';
+    el.className = 'status-bar' + (isError ? ' error' : '');
   }
+
+  /* ── Статистика ── */
+  const TYPE_COLORS = {
+    'звіт':                 '#93c5fd',
+    'рапорт':               '#6ee7b7',
+    'наказ':                '#c4b5fd',
+    'план-конспект':        '#fbcf7c',
+    'методична розробка':   '#f9a8d4',
+    'доповідна':            '#67e8f9',
+    'пояснювальна записка': '#94a3b8',
+    'навчальна програма':   '#fb7185',
+  };
+
+  async function refreshStats() {
+    try {
+      const resp = await fetch('/api/statistics');
+      if (!resp.ok) return;
+      renderStats(await resp.json());
+    } catch (_) {}
+  }
+
+  function renderStats(data) {
+    const total  = data.total  ?? 0;
+    const counts = data.counts ?? {};
+    document.getElementById('statsTotal').textContent = 'Всього: ' + total;
+    const el = document.getElementById('statsContent');
+
+    if (total === 0) {
+      el.innerHTML = '<div class="no-history">Статистика з\'явиться після першої генерації.</div>';
+      return;
+    }
+
+    el.innerHTML = Object.entries(counts).map(([type, count]) => {
+      const pct   = ((count / total) * 100).toFixed(1);
+      const color = TYPE_COLORS[type] || '#94a3b8';
+      return `<div class="stat-row">
+        <div class="stat-label">${type}</div>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar" id="bar-${type.replace(/\s/g,'_')}"
+               data-w="${pct}" style="background:${color}"></div>
+        </div>
+        <div class="stat-count">${count} · ${pct}%</div>
+      </div>`;
+    }).join('');
+
+    // Подвійний rAF — гарантує що initial width:0 встигло відрендеритись
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.querySelectorAll('.stat-bar').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    }));
+  }
+
+  refreshStats();
+
+  /* ── Модальне вікно ── */
+  async function openPreview(fileName) {
+    if (!fileName) return;
+    document.getElementById('modalTitle').textContent = '👁 ' + fileName;
+    document.getElementById('modalBody').innerHTML = '<div class="modal-loading">⏳ Завантаження…</div>';
+    document.getElementById('previewModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    try {
+      const resp = await fetch(`/api/documents/preview?file=${encodeURIComponent(fileName)}`);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('title', 'Перегляд документа');
+      document.getElementById('modalBody').innerHTML = '';
+      document.getElementById('modalBody').appendChild(iframe);
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(await resp.text());
+      iframe.contentDocument.close();
+    } catch (e) {
+      document.getElementById('modalBody').innerHTML =
+        `<div class="modal-loading" style="color:var(--danger)">Помилка: ${e.message}</div>`;
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('previewModal').classList.remove('open');
+    document.getElementById('modalBody').innerHTML = '<div class="modal-loading">Завантаження…</div>';
+    document.body.style.overflow = '';
+  }
+
+  function onOverlayClick(e) {
+    if (e.target === document.getElementById('previewModal')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  // remember last pointer event for ripple positioning
+  document.addEventListener('pointerdown', e => { window._lastPointerEvent = e; });
 </script>
 </body>
 </html>

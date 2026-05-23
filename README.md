@@ -1,6 +1,6 @@
-# Генератор військових документів
+# Система автоматичної генерації звітної та методичної документації з використанням AI-асистентів
 
-Мультиагентна система автоматичної генерації офіційних військових документів на основі неструктурованих нотаток. Формат виводу відповідає вимогам **ДСТУ 4163:2020**.
+Бакалаврська робота. Мультиагентна система на основі великих мовних моделей (LLM) для автоматичної генерації офіційних документів у форматі `.docx` відповідно до **ДСТУ 4163:2020**.
 
 ---
 
@@ -13,44 +13,64 @@
 | LangChain4j | 0.31.0 |
 | Ollama (llama3.2:3b) | локально |
 | Apache POI | 5.2.5 |
+| Apache PDFBox | 3.0.0 |
 | Maven | 3.x |
+
+---
+
+## Опис рішення
+
+Система має веб-інтерфейс та REST API для наступних сценаріїв:
+
+- генерація офіційних документів `.docx` з вхідних нотаток
+- збереження результатів у папці `generated/`
+- перегляд історії генерацій
+- завантаження згенерованого файлу
+- попередній перегляд документа у HTML
+- парсинг завантажених `.docx`, `.pdf` та `.txt` для повторного використання тексту
+- drag&drop для зручного завантаження файлів
+- режим порівняння (compare mode) для генерації двох версій документу
 
 ---
 
 ## Архітектура
 
 ```
-Користувач
-    │
-    ▼
+Користувач (веб-інтерфейс)
+         │
+         ▼
 DocumentController  ←  POST /api/documents/generate
-                        POST /api/documents/generate/docx
-    │
-    ▼
+           │     ├─ GET /api/documents/history
+           │     ├─ DELETE /api/documents/history
+           │     ├─ GET /api/documents/download
+           │     ├─ GET /api/documents/preview
+           │     └─ POST /api/documents/parse
+         ▼
 OrchestratorService
-    │
-    ├─▶ AnalystAgent      (LLM) → структурований JSON
-    │        ↓
-    ├─▶ EditorAgent       (LLM) → офіційний текст (ДСТУ 4163:2020)
-    │        ↓
-    └─▶ DocxService       (POI) → .docx файл
+         │
+         ├─▶ AnalystAgent   (LLM) → структурований JSON
+         │        ↓
+         ├─▶ RagService     (Embedding) → пошук релевантних зразків
+         │        ↓
+         ├─▶ EditorAgent    (LLM) → офіційний текст (ДСТУ 4163:2020)
+         │        ↓
+         └─▶ DocxService    (POI) → .docx файл
 ```
 
-### Агенти
+---
 
-**`AnalystAgent`** — отримує сирий текст, повертає JSON:
-```json
-{
-  "documentType": "рапорт|доповідна|наказ|звіт",
-  "author":    "Коваленко О.В.",
-  "date":      "23.04.2026",
-  "recipient": "командиру в/ч А0000",
-  "subject":   "тема документа",
-  "keyPoints": ["пункт 1", "пункт 2"]
-}
-```
+## Підтримувані типи документів
 
-**`EditorAgent`** — перетворює JSON на офіційно-діловий текст за ДСТУ 4163:2020.
+| Тип | Початок тексту |
+|---|---|
+| Звіт | "Звітую про виконану роботу..." |
+| Методична розробка | "Методична розробка присвячена..." |
+| План-конспект | "Тема заняття:..." |
+| Навчальна програма | "Навчальна програма з дисципліни..." |
+| Пояснювальна записка | "Пояснювальна записка до..." |
+| Рапорт | "Доповідаю, що прошу..." |
+| Доповідна | "Доповідаю, що..." |
+| Наказ | "Наказую:..." |
 
 ---
 
@@ -62,20 +82,20 @@ src/main/java/ua/military/
 ├── config/
 │   └── AiConfig.java              ← підключення до Ollama
 ├── agent/
-│   ├── AnalystAgent.java          ← агент-аналітик
-│   └── EditorAgent.java           ← агент-редактор
+│   ├── AnalystAgent.java          ← аналіз тексту → JSON
+│   └── EditorAgent.java           ← JSON → офіційний текст
 ├── service/
-│   ├── OrchestratorService.java   ← конвеєр агентів
-│   ├── DocumentResult.java        ← DTO: текст + байти .docx
-│   ├── DocxService.java           ← генерація .docx (Apache POI)
-│   └── RagService.java            ← заглушка RAG
+│   ├── OrchestratorService.java   ← конвеєр з 4 кроків
+│   ├── DocumentResult.java        ← DTO результату
+│   ├── DocxService.java           ← генерація .docx і парсинг файлів
+│   └── RagService.java            ← векторна база зразків
 └── controller/
     └── DocumentController.java    ← REST API
 
 src/main/resources/
 ├── application.properties
 └── static/
-    └── index.html                 ← веб-інтерфейс
+    └── index.html                 ← веб-інтерфейс з drag&drop
 ```
 
 ---
@@ -92,70 +112,116 @@ src/main/resources/
 ## Запуск
 
 ```bash
-# 1. Переконатися, що Ollama запущено
+# 1. Запустити Ollama (якщо не запущено як системний сервіс)
 ollama serve
 
-# 2. Зібрати та запустити
+# 2. Зібрати та запустити додаток
+cd Duplome
 mvn spring-boot:run
 ```
 
-Сервер запускається на `http://localhost:8080`.
+Веб-інтерфейс: `http://localhost:8080`
 
 ---
 
-## API
+## Docker
 
-### Отримати текст документа
+Проєкт підтримує контейнерне розгортання через `Dockerfile` та `docker-compose.yml`.
+
+### Варіант 1: Docker Compose
+
+```bash
+cd Duplome
+docker compose up --build
+```
+
+Це створить контейнер `doc-generator`, пробросить порт `8080`, підключить локальні папки `./data` та `./generated`, і налаштує доступ до локального Ollama за адресою `http://host.docker.internal:11434`.
+
+### Варіант 2: вручну з Docker
+
+```bash
+cd Duplome
+docker build -t doc-generator .
+docker run -p 8080:8080 \
+  -v "%cd%/data:/app/data" \
+  -v "%cd%/generated:/app/generated" \
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  doc-generator
+```
+
+> Якщо Ollama працює на хост-машині, контейнер використовує `host.docker.internal` для доступу до нього.
+
+### Перевірка контейнера
+
+Після запуску контейнера можна перевірити роботу так:
+
+```bash
+curl -v http://localhost:8080/api/documents/history
+```
+
+Якщо все правильно, сервер відповість `200 OK` і поверне JSON з історією. Також можна відкрити у браузері `http://localhost:8080`.
+
+---
+
+## REST API
+
+### Згенерувати документ
 
 ```
 POST /api/documents/generate
 Content-Type: text/plain;charset=UTF-8
 
-рапорт від підполковника Коваленко О.В., прошу відпустку 3 доби...
+Звіт доцента Іваненка І.І. за І семестр 2024/2025...
 ```
 
-**Відповідь:** `text/plain;charset=UTF-8` — готовий текст документа.
+### Отримати історію генерацій
 
----
+```
+GET /api/documents/history
+```
+
+### Очистити історію
+
+```
+DELETE /api/documents/history
+```
 
 ### Завантажити .docx
 
 ```
-POST /api/documents/generate/docx
-Content-Type: text/plain;charset=UTF-8
-
-рапорт від підполковника Коваленко О.В., прошу відпустку 3 доби...
+GET /api/documents/download?file=document_1234567890.docx
 ```
 
-**Відповідь:** файл `document_YYYYMMDD.docx`.
+### Переглянути документ у HTML
 
----
+```
+GET /api/documents/preview?file=document_1234567890.docx
+```
 
-### Приклад через curl
+### Парсинг завантаженого файлу
+
+```
+POST /api/documents/parse
+Content-Type: multipart/form-data
+Form field: file
+```
+
+Підтримувані формати: `.docx`, `.pdf`, `.txt`.
+
+### Приклад curl для генерації
 
 ```bash
-# Переглянути текст
 curl -X POST http://localhost:8080/api/documents/generate \
   -H "Content-Type: text/plain;charset=UTF-8" \
-  -d "рапорт від Коваленко О.В., прошу відпустку 3 доби з 25.04.2026, сімейні обставини"
-
-# Завантажити .docx
-curl -X POST http://localhost:8080/api/documents/generate/docx \
-  -H "Content-Type: text/plain;charset=UTF-8" \
-  -d "рапорт від Коваленко О.В., прошу відпустку 3 доби з 25.04.2026" \
-  --output document.docx
+  -d "Звіт доцента Іваненка за семестр. Проведено 14 лекцій, опубліковано 2 статті."
 ```
 
----
+### Приклад curl для парсингу файлу
 
-## Веб-інтерфейс
-
-Відкрити у браузері: `http://localhost:8080`
-
-- Введення вільного тексту (нотатки, тези)
-- Кнопка **"Переглянути текст"** — показує результат у браузері
-- Кнопка **"Завантажити .docx"** — зберігає файл
-- Вбудовані приклади: рапорт, наказ, звіт
+```bash
+curl -X POST http://localhost:8080/api/documents/parse \
+  -F "file=@./sample.docx"
+```
 
 ---
 
@@ -171,29 +237,3 @@ curl -X POST http://localhost:8080/api/documents/generate/docx \
 | Береги: верхнє / нижнє | 20 мм |
 | Вирівнювання тіла | по ширині |
 | Вид документа | по центру, великими, жирний |
-
----
-
-## Що планується
-
-- [ ] `RagService` — векторна база знань з прикладами ДСТУ та глосарієм
-- [ ] Підтримка шаблонів документів (.docx заготовки)
-- [ ] Нумерація документів / реєстраційний номер
-- [ ] Тести (MockMvc + Testcontainers для Ollama)
-
----
-
-## Налаштування
-
-`src/main/resources/application.properties`:
-
-```properties
-spring.application.name=doc-generator
-server.port=8080
-ollama.base.url=http://localhost:11434
-
-# Рівень логування LangChain4j (DEBUG для відлагодження)
-logging.level.dev.langchain4j=WARN
-```
-
-Таймаут моделі та температура — в `AiConfig.java` (за замовчуванням 120 с, 0.3).

@@ -4,6 +4,7 @@ target/
 
 # Згенеровані документи
 generated/
+data/
 
 # IntelliJ IDEA
 .idea/

@@ -1,0 +1,17 @@
+services:
+  doc-generator:
+    build: .
+    container_name: doc-generator
+    ports:
+      - "8080:8080"
+    environment:
+      # Ollama працює на хост-машині; host.docker.internal — стандартне DNS-ім'я для Windows/Mac
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    volumes:
+      # Постійне сховище: H2 БД та згенеровані документи
+      - ./data:/app/data
+      - ./generated:/app/generated
+    extra_hosts:
+      # Потрібно на Linux (на Windows/Mac працює автоматично)
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
