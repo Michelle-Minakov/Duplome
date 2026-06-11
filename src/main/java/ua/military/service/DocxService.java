@@ -42,38 +42,45 @@ public class DocxService {
     public String generateDocx(String documentText, String documentType,
                                 String author, String recipient) {
         new java.io.File(OUTPUT_DIR).mkdirs();
-        String fileName = OUTPUT_DIR + "document_" + java.util.UUID.randomUUID() + ".docx";
+        String fileName = OUTPUT_DIR + makeFileName(documentType);
 
         try (XWPFDocument doc = new XWPFDocument()) {
             setPageMargins(doc);
 
-            // Адресат — правий верхній кут
-            if (recipient != null && !recipient.isBlank()
-                    && !recipient.equalsIgnoreCase("невідомо")) {
-                addLine(doc, recipient, ParagraphAlignment.RIGHT, false);
-                addEmptyLine(doc);
-            }
-
-            // Назва виду документа — по центру, жирний
-            addLine(doc, documentType.toUpperCase(), ParagraphAlignment.CENTER, true);
-
-            // Дата та номер — по центру
-            String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-            addLine(doc, "№ ___ від " + date, ParagraphAlignment.CENTER, false);
-            addEmptyLine(doc);
-
-            // Тіло — залежить від типу документа
             String type = documentType.toLowerCase().strip();
-            switch (type) {
-                case "наказ"        -> buildNakazBody(doc, documentText);
-                case "план-конспект" -> buildPlanKonspektBody(doc, documentText);
-                default             -> buildDefaultBody(doc, documentText);
-            }
+            String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 
-            // Підпис
-            addEmptyLine(doc);
-            addEmptyLine(doc);
-            addLine(doc, author, ParagraphAlignment.LEFT, false);
+            if (type.equals("рапорт")) {
+                // Рапорт: LLM генерує повний текст включно з адресатом і РАПОРТ
+                // DocxService лише форматує кожен рядок за структурою
+                buildRaportDoc(doc, documentText, date);
+            } else if (type.equals("методична розробка")) {
+                // Методична: заголовок по центру без номера, тіло без дублювання
+                addLine(doc, "МЕТОДИЧНА РОЗРОБКА", ParagraphAlignment.CENTER, true);
+                addEmptyLine(doc);
+                // Прибираємо перший рядок "МЕТОДИЧНА РОЗРОБКА" якщо модель його додала
+                String bodyText = stripLeadingTitle(documentText, "методична розробка");
+                buildDefaultBody(doc, bodyText);
+            } else {
+                // Інші типи (наказ, план-конспект тощо): заголовок + номер + тіло
+                if (recipient != null && !recipient.isBlank()
+                        && !recipient.equalsIgnoreCase("невідомо")) {
+                    addLine(doc, recipient, ParagraphAlignment.RIGHT, false);
+                    addEmptyLine(doc);
+                }
+                addLine(doc, documentType.toUpperCase(), ParagraphAlignment.CENTER, true);
+                addLine(doc, "№ ___ від " + date, ParagraphAlignment.CENTER, false);
+                addEmptyLine(doc);
+
+                switch (type) {
+                    case "наказ"         -> buildNakazBody(doc, documentText);
+                    case "план-конспект" -> buildPlanKonspektBody(doc, documentText);
+                    default              -> buildDefaultBody(doc, documentText);
+                }
+                addEmptyLine(doc);
+                addEmptyLine(doc);
+                addLine(doc, author, ParagraphAlignment.LEFT, false);
+            }
 
             try (FileOutputStream out = new FileOutputStream(fileName)) {
                 doc.write(out);
@@ -118,6 +125,158 @@ public class DocxService {
             log.error("Помилка парсингу файлу {}: {}", name, e.getMessage());
             return "";
         }
+    }
+
+    // ── Рапорт: розумне форматування LLM-виводу ──
+    private void buildRaportDoc(XWPFDocument doc, String text, String date) {
+        String[] lines = text.split("\n");
+
+        // Знаходимо рядок РАПОРТ
+        int raportIdx = -1;
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].strip().equalsIgnoreCase("рапорт")) {
+                raportIdx = i;
+                break;
+            }
+        }
+        if (raportIdx == -1) {
+            // Якщо РАПОРТ не знайдено — форматуємо як звичайний текст
+            buildDefaultBody(doc, text);
+            return;
+        }
+
+        // Рядки ДО "РАПОРТ" — адресат, правий край
+        for (int i = 0; i < raportIdx; i++) {
+            String t = lines[i].strip();
+            if (!t.isEmpty()) addLine(doc, t, ParagraphAlignment.RIGHT, false);
+        }
+        addEmptyLine(doc);
+
+        // РАПОРТ — по центру, жирний
+        addLine(doc, "РАПОРТ", ParagraphAlignment.CENTER, true);
+        addEmptyLine(doc);
+
+        // Знаходимо де починається блок підпису — останній порожній рядок
+        int signStart = lines.length;
+        for (int i = lines.length - 1; i > raportIdx + 2; i--) {
+            if (lines[i].strip().isEmpty()) { signStart = i + 1; break; }
+        }
+
+        // Тіло рапорту
+        StringBuilder block = new StringBuilder();
+        for (int i = raportIdx + 1; i < signStart; i++) {
+            String t = lines[i].strip();
+            if (t.isEmpty()) {
+                if (block.length() > 0) {
+                    addBodyBlock(doc, block.toString());
+                    block = new StringBuilder();
+                }
+            } else {
+                if (block.length() > 0) block.append("\n");
+                block.append(lines[i]);
+            }
+        }
+        if (block.length() > 0) addBodyBlock(doc, block.toString());
+
+        // Підпис: посада/звання зліва, прізвище праворуч
+        addEmptyLine(doc);
+        addEmptyLine(doc);
+
+        // Збираємо рядки підпису
+        java.util.List<String> sigLines = new java.util.ArrayList<>();
+        for (int i = signStart; i < lines.length; i++) {
+            String t = lines[i].strip();
+            if (!t.isEmpty()) sigLines.add(t);
+        }
+
+        if (sigLines.size() >= 2) {
+            // Перший рядок: "звання Прізвище І.І." — ділимо на звання і прізвище
+            // Формат: перше слово = звання, решта = прізвище
+            String firstSig = sigLines.get(0);
+            int spaceIdx = firstSig.indexOf(' ');
+            String rank    = spaceIdx > 0 ? firstSig.substring(0, spaceIdx) : firstSig;
+            String surname = spaceIdx > 0 ? firstSig.substring(spaceIdx + 1).toUpperCase() : "";
+
+            // Таблиця без рамок: звання зліва, прізвище праворуч
+            addSignatureRow(doc, rank, surname);
+            // Решта рядків підпису — зліва
+            for (int i = 1; i < sigLines.size(); i++) {
+                addLine(doc, sigLines.get(i), ParagraphAlignment.LEFT, false);
+            }
+        } else {
+            for (String s : sigLines) addLine(doc, s, ParagraphAlignment.LEFT, false);
+        }
+        addLine(doc, date, ParagraphAlignment.LEFT, false);
+    }
+
+    // ── Підпис: таблиця 2 колонки без рамок — звання зліва, ПРІЗВИЩЕ справа ──
+    private void addSignatureRow(XWPFDocument doc, String left, String right) {
+        XWPFTable table = doc.createTable(1, 2);
+
+        CTTbl    tbl   = table.getCTTbl();
+        CTTblPr  tblPr = tbl.getTblPr() != null ? tbl.getTblPr() : tbl.addNewTblPr();
+
+        // Прибираємо рамки таблиці
+        CTTblBorders borders = tblPr.getTblBorders() != null
+                ? tblPr.getTblBorders() : tblPr.addNewTblBorders();
+        setNoBorder(borders.getTop()     != null ? borders.getTop()     : borders.addNewTop());
+        setNoBorder(borders.getBottom()  != null ? borders.getBottom()  : borders.addNewBottom());
+        setNoBorder(borders.getLeft()    != null ? borders.getLeft()    : borders.addNewLeft());
+        setNoBorder(borders.getRight()   != null ? borders.getRight()   : borders.addNewRight());
+        setNoBorder(borders.getInsideH() != null ? borders.getInsideH() : borders.addNewInsideH());
+        setNoBorder(borders.getInsideV() != null ? borders.getInsideV() : borders.addNewInsideV());
+
+        // Ширина таблиці
+        CTTblWidth tblW = tblPr.getTblW() != null ? tblPr.getTblW() : tblPr.addNewTblW();
+        tblW.setType(STTblWidth.DXA);
+        tblW.setW(BigInteger.valueOf(9354));
+
+        fillSigCell(table.getRow(0).getCell(0), left,  ParagraphAlignment.LEFT,  4677, false);
+        fillSigCell(table.getRow(0).getCell(1), right, ParagraphAlignment.RIGHT, 4677, true);
+    }
+
+    private void setNoBorder(CTBorder b) {
+        b.setVal(STBorder.NONE);
+    }
+
+    private void fillSigCell(XWPFTableCell cell, String text,
+                              ParagraphAlignment align, int widthTwips, boolean bold) {
+        while (!cell.getParagraphs().isEmpty()) cell.removeParagraph(0);
+        XWPFParagraph para = cell.addParagraph();
+        para.setAlignment(align);
+        applySpacing(para);
+        XWPFRun run = para.createRun();
+        run.setFontFamily(FONT);
+        run.setFontSize(FONT_SIZE);
+        run.setBold(bold);
+        run.setText(text);
+
+        CTTcPr tcPr = cell.getCTTc().getTcPr() != null
+                ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTTblWidth w = tcPr.getTcW() != null ? tcPr.getTcW() : tcPr.addNewTcW();
+        w.setType(STTblWidth.DXA);
+        w.setW(BigInteger.valueOf(widthTwips));
+
+        CTTcBorders cb = tcPr.getTcBorders() != null
+                ? tcPr.getTcBorders() : tcPr.addNewTcBorders();
+        setNoBorder(cb.getTop()    != null ? cb.getTop()    : cb.addNewTop());
+        setNoBorder(cb.getBottom() != null ? cb.getBottom() : cb.addNewBottom());
+        setNoBorder(cb.getLeft()   != null ? cb.getLeft()   : cb.addNewLeft());
+        setNoBorder(cb.getRight()  != null ? cb.getRight()  : cb.addNewRight());
+    }
+
+    private String makeFileName(String documentType) {
+        String prefix = switch (documentType == null ? "" : documentType.toLowerCase().strip()) {
+            case "рапорт"             -> "raport";
+            case "методична розробка" -> "metodychna";
+            case "наказ"              -> "nakaz";
+            case "план-конспект"      -> "plan_konspekt";
+            case "доповідна записка"  -> "dopovid";
+            default                   -> "document";
+        };
+        String ts = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return prefix + "_" + ts + ".docx";
     }
 
     // ── Стандартне тіло (рапорт, звіт, доповідна, методична розробка тощо) ──
@@ -277,6 +436,29 @@ public class DocxService {
         b.setVal(STBorder.SINGLE);
         b.setSz(BigInteger.valueOf(4));
         b.setColor("000000");
+    }
+
+    // ── Видаляє перший рядок якщо він повторює заголовок документа ──
+    private String stripLeadingTitle(String text, String titleKeyword) {
+        if (text == null) return "";
+        String[] lines = text.split("\n", -1);
+        int start = 0;
+        for (int i = 0; i < Math.min(3, lines.length); i++) {
+            String t = lines[i].strip().toLowerCase();
+            if (t.equals(titleKeyword) || t.startsWith(titleKeyword)) {
+                start = i + 1;
+                break;
+            }
+        }
+        // Пропускаємо порожні рядки після заголовка
+        while (start < lines.length && lines[start].strip().isEmpty()) start++;
+        if (start == 0) return text;
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i < lines.length; i++) {
+            sb.append(lines[i]);
+            if (i < lines.length - 1) sb.append("\n");
+        }
+        return sb.toString();
     }
 
     // ── Допоміжна: перше речення тексту для таблиці ──

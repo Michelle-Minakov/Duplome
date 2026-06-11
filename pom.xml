@@ -76,6 +76,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- LanguageTool — граматична перевірка української мови -->
+        <dependency>
+            <groupId>org.languagetool</groupId>
+            <artifactId>language-uk</artifactId>
+            <version>6.4</version>
+        </dependency>
+
         <!-- Тестові залежності -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

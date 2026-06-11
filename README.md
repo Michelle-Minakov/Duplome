@@ -1,118 +1,150 @@
-# Система автоматичної генерації звітної та методичної документації з використанням AI-асистентів
+# Система автоматичної генерації військових документів із використанням AI-асистентів
 
-Бакалаврська робота. Мультиагентна система на основі великих мовних моделей (LLM) для автоматичної генерації офіційних документів у форматі `.docx` відповідно до **ДСТУ 4163:2020**.
-
----
-
-## Технічний стек
-
-| Компонент | Версія |
-|---|---|
-| Java | 17 |
-| Spring Boot | 3.2.5 |
-| LangChain4j | 0.31.0 |
-| Ollama (llama3.2:3b) | локально |
-| Apache POI | 5.2.5 |
-| Apache PDFBox | 3.0.0 |
-| Maven | 3.x |
+Бакалаврська дипломна робота. Мультиагентна система на основі великих мовних моделей (LLM) для автоматичної генерації офіційних військових документів у форматі `.docx` відповідно до **ДСТУ 4163:2020** та **Наказу МО України № 40 від 31.01.2024**.
 
 ---
 
-## Опис рішення
+## Технологічний стек
 
-Система має веб-інтерфейс та REST API для наступних сценаріїв:
-
-- генерація офіційних документів `.docx` з вхідних нотаток
-- збереження результатів у папці `generated/`
-- перегляд історії генерацій
-- завантаження згенерованого файлу
-- попередній перегляд документа у HTML
-- парсинг завантажених `.docx`, `.pdf` та `.txt` для повторного використання тексту
-- drag&drop для зручного завантаження файлів
-- режим порівняння (compare mode) для генерації двох версій документу
+| Компонент | Версія | Призначення |
+|---|---|---|
+| Java | 21 | Основна мова реалізації |
+| Spring Boot | 3.2.5 | Веб-фреймворк, REST API |
+| LangChain4j | 0.31.0 | Інтеграція з LLM, RAG-конвеєр |
+| Ollama | локально | Сервер локальних LLM-моделей |
+| qwen2.5:7b | 4.7 GB | Генеративна мовна модель |
+| AllMiniLmL6V2 | вбудована | Ембеддинги для векторного пошуку |
+| Apache POI | 5.2.5 | Генерація .docx документів |
+| Apache PDFBox | 2.0.29 | Парсинг PDF файлів |
+| LanguageTool | 6.4 | Граматична перевірка (українська) |
+| H2 Database | вбудована | Файлова БД для метаданих |
+| Maven | 3.x | Система збірки |
 
 ---
 
-## Архітектура
+## Архітектура системи
+
+Система реалізована за принципом **багатоагентного конвеєра** (Multi-Agent Pipeline) з інтеграцією RAG (Retrieval-Augmented Generation).
 
 ```
-Користувач (веб-інтерфейс)
+Користувач (браузер / Vanilla JS)
+              │
+              ▼
+   DocumentController  ←→  REST API (/api/documents/*)
+              │
+              ▼
+   OrchestratorService  ←  координує весь конвеєр
+              │
+    ┌─────────┼──────────┐
+    │         │          │
+    ▼         ▼          │
+AnalystAgent  RagService  │
+(LLM)    (AllMiniLM)     │
+    │         │          │
+    └────┬────┘          │
+         │               │
+         ▼               │
+   EditorAgent           │
+   (LLM: qwen2.5:7b)     │
+         │               │
+         ▼               │
+   DocxService  ←────────┘
+   (Apache POI)
          │
          ▼
-DocumentController  ←  POST /api/documents/generate
-           │     ├─ GET /api/documents/history
-           │     ├─ DELETE /api/documents/history
-           │     ├─ GET /api/documents/download
-           │     ├─ GET /api/documents/preview
-           │     └─ POST /api/documents/parse
-         ▼
-OrchestratorService
+   GrammarCheckService
+   (LanguageTool)
          │
-         ├─▶ AnalystAgent   (LLM) → структурований JSON
-         │        ↓
-         ├─▶ RagService     (Embedding) → пошук релевантних зразків
-         │        ↓
-         ├─▶ EditorAgent    (LLM) → офіційний текст (ДСТУ 4163:2020)
-         │        ↓
-         └─▶ DocxService    (POI) → .docx файл
+         ▼
+   H2 Database + generated/*.docx
 ```
+
+### Кроки конвеєра
+
+| Крок | Компонент | Дія |
+|---|---|---|
+| 1 | `AnalystAgent` | Аналізує вхідні нотатки → повертає JSON `{documentType, author, recipient, subject}` |
+| 2 | `RagService` | Векторний пошук релевантних зразків (score ≥ 0.45, max 2 фрагменти) |
+| 3 | `EditorAgent` | Генерує офіційний текст документа на основі JSON + RAG-контексту |
+| 4 | `DocxService` | Форматує текст у .docx за ДСТУ 4163:2020 |
+| 5 | `GrammarCheckService` | Перевіряє граматику та орфографію (LanguageTool, uk) |
 
 ---
 
 ## Підтримувані типи документів
 
-| Тип | Початок тексту |
+| Тип | Опис |
 |---|---|
-| Звіт | "Звітую про виконану роботу..." |
-| Методична розробка | "Методична розробка присвячена..." |
-| План-конспект | "Тема заняття:..." |
-| Навчальна програма | "Навчальна програма з дисципліни..." |
-| Пояснювальна записка | "Пояснювальна записка до..." |
-| Рапорт | "Доповідаю, що прошу..." |
-| Доповідна | "Доповідаю, що..." |
-| Наказ | "Наказую:..." |
+| **Рапорт** | Особисте звернення військовослужбовця до командира |
+| **Методична розробка** | Навчально-методичний документ викладача ВВНЗ |
+| Наказ | Розпорядчий документ командира |
+| План-конспект | Конспект лекційного/практичного заняття |
+| Доповідна записка | Службова записка до вищого начальника |
 
 ---
 
 ## Структура проєкту
 
 ```
-src/main/java/ua/military/
-├── DocGeneratorApplication.java   ← точка входу, порт 8080
-├── config/
-│   └── AiConfig.java              ← підключення до Ollama
-├── agent/
-│   ├── AnalystAgent.java          ← аналіз тексту → JSON
-│   └── EditorAgent.java           ← JSON → офіційний текст
-├── service/
-│   ├── OrchestratorService.java   ← конвеєр з 4 кроків
-│   ├── DocumentResult.java        ← DTO результату
-│   ├── DocxService.java           ← генерація .docx і парсинг файлів
-│   └── RagService.java            ← векторна база зразків
-└── controller/
-    └── DocumentController.java    ← REST API
-
-src/main/resources/
-├── application.properties
-└── static/
-    └── index.html                 ← веб-інтерфейс з drag&drop
+Duplome/
+├── src/main/java/ua/military/
+│   ├── DocGeneratorApplication.java     ← точка входу, порт 8080
+│   ├── config/
+│   │   └── AiConfig.java                ← Ollama: qwen2.5:7b, temp=0.2, ctx=8192
+│   ├── agent/
+│   │   ├── AnalystAgent.java            ← нотатки → структурований JSON
+│   │   ├── RaportEditorAgent.java       ← JSON + RAG → офіційний рапорт
+│   │   └── MethodychnaEditorAgent.java  ← JSON + RAG → методична розробка
+│   ├── service/
+│   │   ├── OrchestratorService.java     ← конвеєр з 5 кроків
+│   │   ├── RagService.java              ← векторна база + AllMiniLM ембеддинги
+│   │   ├── DocxService.java             ← генерація .docx за ДСТУ 4163:2020
+│   │   ├── GrammarCheckService.java     ← граматична перевірка (LanguageTool)
+│   │   ├── StatisticsService.java       ← агрегація метрик з БД
+│   │   └── GenerationResponse.java      ← DTO відповіді
+│   ├── controller/
+│   │   ├── DocumentController.java      ← REST API документів
+│   │   └── StatisticsController.java    ← REST API статистики
+│   ├── model/
+│   │   └── DocumentRecord.java          ← JPA-сутність запису генерації
+│   └── repository/
+│       └── DocumentRepository.java      ← Spring Data JPA репозиторій
+│
+├── src/main/resources/
+│   ├── application.properties           ← конфігурація Spring, H2, Ollama
+│   ├── static/
+│   │   └── index.html                   ← SPA веб-інтерфейс (Vanilla JS)
+│   └── rag/
+│       ├── raport_rules.txt             ← правила складання рапорту
+│       ├── metodychna_rules.txt         ← вимоги до методичної розробки
+│       ├── metodychna_examples.txt      ← зразки (оборона, медична, топографія)
+│       └── metodychna_full_examples.txt ← зразки (статут, стройова, РХБ, фізична, інженерна, правова, зв'язок)
+│
+├── rag/
+│   └── generated_samples.txt            ← накопичені зразки (feedback loop)
+├── generated/                           ← згенеровані .docx файли
+├── data/
+│   └── docgen.mv.db                     ← H2 файлова БД
+├── docker-compose.yml
+├── Dockerfile
+└── pom.xml
 ```
 
 ---
 
 ## Вимоги
 
-- **Java 17+**
+- **Java 21+**
 - **Maven 3.x**
 - **Ollama** запущений локально: `http://localhost:11434`
-- Модель завантажена: `ollama pull llama3.2:3b`
+- Модель завантажена: `ollama pull qwen2.5:7b`
 
 ---
 
 ## Запуск
 
-```bash
-# 1. Запустити Ollama (якщо не запущено як системний сервіс)
+```powershell
+# 1. Запустити Ollama
 ollama serve
 
 # 2. Зібрати та запустити додаток
@@ -126,101 +158,43 @@ mvn spring-boot:run
 
 ## Docker
 
-Проєкт підтримує контейнерне розгортання через `Dockerfile` та `docker-compose.yml`.
-
-### Варіант 1: Docker Compose
-
 ```bash
+# Docker Compose (рекомендовано)
 cd Duplome
 docker compose up --build
-```
 
-Це створить контейнер `doc-generator`, пробросить порт `8080`, підключить локальні папки `./data` та `./generated`, і налаштує доступ до локального Ollama за адресою `http://host.docker.internal:11434`.
-
-### Варіант 2: вручну з Docker
-
-```bash
-cd Duplome
+# Або вручну
 docker build -t doc-generator .
 docker run -p 8080:8080 \
-  -v "%cd%/data:/app/data" \
-  -v "%cd%/generated:/app/generated" \
+  -v "./data:/app/data" \
+  -v "./generated:/app/generated" \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   doc-generator
 ```
-
-> Якщо Ollama працює на хост-машині, контейнер використовує `host.docker.internal` для доступу до нього.
-
-### Перевірка контейнера
-
-Після запуску контейнера можна перевірити роботу так:
-
-```bash
-curl -v http://localhost:8080/api/documents/history
-```
-
-Якщо все правильно, сервер відповість `200 OK` і поверне JSON з історією. Також можна відкрити у браузері `http://localhost:8080`.
 
 ---
 
 ## REST API
 
-### Згенерувати документ
+| Метод | Endpoint | Опис |
+|---|---|---|
+| `POST` | `/api/documents/generate` | Генерація документа з нотаток |
+| `POST` | `/api/documents/generate?mode=compare` | Генерація двох версій (з RAG і без) |
+| `GET` | `/api/documents/history` | Список останніх 200 документів |
+| `GET` | `/api/documents/download?file=...` | Завантажити .docx |
+| `GET` | `/api/documents/preview?file=...` | HTML-перегляд документа |
+| `POST` | `/api/documents/save-to-rag` | Зберегти документ як зразок |
+| `POST` | `/api/documents/parse` | Витягти текст з .docx / .pdf / .txt |
+| `DELETE` | `/api/documents/delete?file=...` | Видалити один документ |
+| `DELETE` | `/api/documents/history` | Очистити всю історію |
+| `GET` | `/api/statistics` | Статистика генерацій |
 
-```
-POST /api/documents/generate
-Content-Type: text/plain;charset=UTF-8
-
-Звіт доцента Іваненка І.І. за І семестр 2024/2025...
-```
-
-### Отримати історію генерацій
-
-```
-GET /api/documents/history
-```
-
-### Очистити історію
-
-```
-DELETE /api/documents/history
-```
-
-### Завантажити .docx
-
-```
-GET /api/documents/download?file=document_1234567890.docx
-```
-
-### Переглянути документ у HTML
-
-```
-GET /api/documents/preview?file=document_1234567890.docx
-```
-
-### Парсинг завантаженого файлу
-
-```
-POST /api/documents/parse
-Content-Type: multipart/form-data
-Form field: file
-```
-
-Підтримувані формати: `.docx`, `.pdf`, `.txt`.
-
-### Приклад curl для генерації
+### Приклад запиту
 
 ```bash
 curl -X POST http://localhost:8080/api/documents/generate \
   -H "Content-Type: text/plain;charset=UTF-8" \
-  -d "Звіт доцента Іваненка за семестр. Проведено 14 лекцій, опубліковано 2 статті."
-```
-
-### Приклад curl для парсингу файлу
-
-```bash
-curl -X POST http://localhost:8080/api/documents/parse \
-  -F "file=@./sample.docx"
+  -d "рапорт від лейтенанта Коваленко В.О. командиру роти капітану Мельнику С.П. прошу відпустку на 5 діб з 15.06.2026"
 ```
 
 ---
@@ -236,4 +210,16 @@ curl -X POST http://localhost:8080/api/documents/parse \
 | Береги: праве | 15 мм |
 | Береги: верхнє / нижнє | 20 мм |
 | Вирівнювання тіла | по ширині |
-| Вид документа | по центру, великими, жирний |
+| Заголовок | по центру, великими, жирний |
+| Підпис рапорту | таблиця без рамок: звання зліва — ПРІЗВИЩЕ справа |
+
+---
+
+## Особливості реалізації
+
+- **Локальна AI** — модель `qwen2.5:7b` працює повністю офлайн, без хмарних сервісів
+- **RAG Feedback Loop** — кожен збережений зразок одразу потрапляє у векторну базу
+- **Граматична перевірка** — LanguageTool з підтримкою української мови після кожної генерації
+- **Режим порівняння** — генерує два документи (з RAG і без) для демонстрації впливу RAG
+- **Фільтрація RAG** — для методичних розробок автоматично виключаються рапорт-фрагменти
+- **Нормалізація типу** — система розпізнає "Raport", "raport", "rapport" → "рапорт"

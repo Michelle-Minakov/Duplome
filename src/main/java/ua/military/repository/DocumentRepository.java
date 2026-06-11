@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface DocumentRepository extends JpaRepository<DocumentRecord, Long> {
 
-    List<DocumentRecord> findTop20ByOrderByCreatedAtDesc();
+    List<DocumentRecord> findTop200ByOrderByCreatedAtDesc();
 
     @Query("SELECT r.documentType, COUNT(r) FROM DocumentRecord r " +
            "GROUP BY r.documentType ORDER BY COUNT(r) DESC")

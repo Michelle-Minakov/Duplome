@@ -16,8 +16,8 @@ import ua.military.repository.DocumentRepository;
 import ua.military.service.GenerationResponse;
 import ua.military.service.OrchestratorService;
 import ua.military.service.DocxService;
+import ua.military.service.RagService;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.MediaType;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,33 +34,41 @@ public class DocumentController {
 
     private final OrchestratorService orchestratorService;
     private final DocumentRepository  documentRepository;
-    private final DocxService docxService;
+    private final DocxService         docxService;
+    private final RagService          ragService;
 
     @PostMapping(value = "/generate",
                  consumes = "text/plain;charset=UTF-8",
                  produces = "application/json;charset=UTF-8")
-    public GenerationResponse generate(
+    public ResponseEntity<?> generate(
             @RequestBody String rawNotes,
             @RequestParam(defaultValue = "normal") String mode) {
 
-        if ("compare".equals(mode)) {
-            return orchestratorService.generateDocumentCompare(rawNotes);
+        if (rawNotes == null || rawNotes.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "Текст не може бути порожнім"));
         }
-        return orchestratorService.generateDocument(rawNotes);
+        GenerationResponse result = "compare".equals(mode)
+                ? orchestratorService.generateDocumentCompare(rawNotes)
+                : orchestratorService.generateDocument(rawNotes);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping(value = "/history", produces = "application/json;charset=UTF-8")
     public List<Map<String, Object>> getHistory() {
-        return documentRepository.findTop20ByOrderByCreatedAtDesc().stream()
-                .map(r -> Map.<String, Object>of(
-                        "id",               r.getId(),
-                        "documentType",     r.getDocumentType(),
-                        "fileName",         r.getFileName(),
-                        "createdAt",        r.getCreatedAt().toString(),
-                        "processingTimeMs", r.getProcessingTimeMs(),
-                        "ragFragmentsUsed", r.getRagFragmentsUsed(),
-                        "compareMode",      r.isCompareMode()
-                ))
+        return documentRepository.findTop200ByOrderByCreatedAtDesc().stream()
+                .map(r -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id",               r.getId());
+                    m.put("documentType",     r.getDocumentType());
+                    m.put("fileName",         r.getFileName());
+                    m.put("createdAt",        r.getCreatedAt().toString());
+                    m.put("processingTimeMs", r.getProcessingTimeMs());
+                    m.put("ragFragmentsUsed", r.getRagFragmentsUsed());
+                    m.put("compareMode",      r.isCompareMode());
+                    m.put("fileExists",       new File("generated/" + r.getFileName()).exists());
+                    return m;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -69,6 +77,33 @@ public class DocumentController {
         documentRepository.deleteAll();
         log.info("Історія генерацій очищена");
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> deleteOne(@RequestParam String file) {
+        String safeName = new File(file).getName();
+        documentRepository.findTop200ByOrderByCreatedAtDesc().stream()
+                .filter(r -> safeName.equals(r.getFileName()))
+                .findFirst()
+                .ifPresent(documentRepository::delete);
+        new File("generated/" + safeName).delete();
+        log.info("Документ видалено: {}", safeName);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/save-to-rag", consumes = "application/json;charset=UTF-8",
+                 produces = "application/json;charset=UTF-8")
+    public ResponseEntity<Map<String, Object>> saveToRag(@RequestBody Map<String, String> body) {
+        String text         = body.getOrDefault("text", "").strip();
+        String documentType = body.getOrDefault("documentType", "рапорт");
+        if (text.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("ok", "false", "error", "Порожній текст"));
+        }
+        ragService.addGeneratedSample(text, documentType);
+        int total = ragService.getFeedbackCount();
+        log.info("Зразок збережено у RAG. Всього накопичено: {}", total);
+        return ResponseEntity.ok(Map.of("ok", "true", "total", String.valueOf(total)));
     }
 
     @GetMapping("/download")
