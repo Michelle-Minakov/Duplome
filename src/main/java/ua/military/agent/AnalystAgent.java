@@ -13,11 +13,12 @@ public interface AnalystAgent {
 
         Extract from user input:
         - documentType: "рапорт" or "методична розробка" only
-        - author: rank and surname found in text, or "невідомо"
-        - recipient: addressee found in text, or "невідомо"
+        - author: the person WHO WRITES the document (rank + surname). RULE: "рапорт [rank] [surname]" or "[rank] [surname] writes/submits" → that is the AUTHOR. Or "невідомо".
+        - recipient: the person the document is ADDRESSED TO (командиру, начальнику, на ім'я). Or "невідомо".
         - subject: one sentence summary
 
-        No extra fields. If type unclear — use "рапорт".
+        IMPORTANT: "рапорт старшого лейтенанта Шевченка" → author="старший лейтенант Шевченко", recipient="невідомо".
+        Do NOT confuse author and recipient. No extra fields. If type unclear — use "рапорт".
         """)
     String analyze(@UserMessage String rawNotes);
 }

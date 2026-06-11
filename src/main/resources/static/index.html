@@ -970,8 +970,18 @@
       color: #92400e;
       background: #fef3c7;
       border-bottom: 1px solid #fcd34d;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
+    .grammar-header:hover { background: #fde68a; }
+    .grammar-toggle { font-size: .7rem; transition: transform .2s; }
+    .grammar-toggle.open { transform: rotate(180deg); }
     .grammar-list { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .grammar-list.collapsed { display: none; }
     .grammar-item {
       font-size: .78rem;
       display: flex;
@@ -1118,8 +1128,11 @@
         </div>
       <!-- Граматичні попередження LanguageTool -->
       <div id="grammarPanel" class="grammar-panel hidden">
-        <div class="grammar-header">⚠ Граматичні зауваження (LanguageTool)</div>
-        <div id="grammarList" class="grammar-list"></div>
+        <div class="grammar-header" onclick="toggleGrammar()">
+          <span id="grammarHeaderText">⚠ Граматичні зауваження (LanguageTool)</span>
+          <span class="grammar-toggle" id="grammarToggle">▼</span>
+        </div>
+        <div id="grammarList" class="grammar-list collapsed"></div>
       </div>
 
       <div class="btn-row">
@@ -1429,14 +1442,12 @@
     renderMetrics(data, 'metricsRow');
     document.getElementById('docText').textContent = data.text || '';
 
+    // RAG панель завжди прихована у результаті
     const ragPanel = document.getElementById('ragContextPanel');
     if (data.ragContext) {
       document.getElementById('ragText').textContent = data.ragContext;
-      ragPanel.classList.remove('hidden');
-    } else {
-      ragPanel.classList.add('hidden');
-      document.getElementById('ragText').textContent = '';
     }
+    ragPanel.classList.add('hidden');
 
     if (data.fileName) {
       currentFile = data.fileName;
@@ -1452,7 +1463,7 @@
       ragBtn._saved = false;
     }
 
-    // Граматичні попередження LanguageTool
+    // Граматичні попередження LanguageTool — показуємо панель, список collapsed
     const grammarPanel = document.getElementById('grammarPanel');
     const grammarList  = document.getElementById('grammarList');
     const warnings = data.grammarWarnings || [];
@@ -1465,11 +1476,23 @@
             ? `<span class="grammar-sugg">→ ${w.suggestions.map(s => `<b>${escapeHtml(s)}</b>`).join(', ')}</span>`
             : ''}
         </div>`).join('');
+      document.getElementById('grammarHeaderText').textContent =
+        `⚠ Граматичні зауваження (${warnings.length})`;
+      grammarList.classList.add('collapsed');
+      document.getElementById('grammarToggle').classList.remove('open');
       grammarPanel.classList.remove('hidden');
     } else {
       grammarPanel.classList.add('hidden');
       grammarList.innerHTML = '';
     }
+  }
+
+  /* ── Граматична панель: розгорнути/згорнути ── */
+  function toggleGrammar() {
+    const list   = document.getElementById('grammarList');
+    const toggle = document.getElementById('grammarToggle');
+    list.classList.toggle('collapsed');
+    toggle.classList.toggle('open');
   }
 
   /* ── Збереження у базу знань ── */

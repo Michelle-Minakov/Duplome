@@ -204,7 +204,16 @@ public class OrchestratorService {
                         && !t.contains("правилами поведінки")
                         && !t.contains("проінструктован")
                         && !t.contains("солдат")
-                        && !t.contains("рапорт");
+                        && !t.contains("рапорт")
+                        // Рядки з правил рапорту (raport_rules.txt)
+                        && !t.contains("замість давального")
+                        && !t.contains("замість родового")
+                        && !t.contains("відсутність дати")
+                        && !t.contains("зайві емоційні")
+                        && !t.contains("розмите формулювання")
+                        && !t.contains("адресат у")
+                        && !t.contains("у давальному відмінку")
+                        && !t.contains("документа-обґрунтування");
                 })
                 .collect(java.util.stream.Collectors.joining("\n"))
                 .strip();
