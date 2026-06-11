@@ -22,7 +22,6 @@ public class OrchestratorService {
     private final DocxService            docxService;
     private final RagService             ragService;
     private final DocumentRepository     documentRepository;
-    private final GrammarCheckService    grammarCheckService;
 
     public GenerationResponse generateDocument(String rawNotes) {
         long start = System.currentTimeMillis();
@@ -55,12 +54,6 @@ public class OrchestratorService {
         String fileName       = new java.io.File(filePath).getName();
         long   processingTime = System.currentTimeMillis() - start;
 
-        log.info("=== Крок 5: Граматична перевірка (LanguageTool) ===");
-        var grammarWarnings = grammarCheckService.check(officialText);
-        if (!grammarWarnings.isEmpty()) {
-            log.info("LanguageTool: знайдено {} попереджень", grammarWarnings.size());
-        }
-
         documentRepository.save(DocumentRecord.builder()
                 .documentType(documentType)
                 .fileName(fileName)
@@ -77,8 +70,7 @@ public class OrchestratorService {
         return new GenerationResponse(
                 documentType, officialText, fileName, processingTime,
                 null, null, null, ragResult.context(),
-                ragResult.fragmentsUsed(), documentType, ragResult.hasContext(),
-                grammarWarnings);
+                ragResult.fragmentsUsed(), documentType, ragResult.hasContext());
     }
 
     // Визначає чи текст є вже готовим документом (не нотатками)

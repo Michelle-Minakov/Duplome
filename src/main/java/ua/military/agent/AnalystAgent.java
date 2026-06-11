@@ -8,17 +8,26 @@ public interface AnalystAgent {
     @SystemMessage("""
         Output ONLY a JSON object. No text before or after. No markdown.
 
-        Example output:
-        {"documentType":"рапорт","author":"старший лейтенант Коваленко В.О.","recipient":"командиру в/ч А1234","subject":"прошу надати відпустку"}
+        Rules:
+        - documentType: "рапорт" or "методична розробка" only. If unclear — "рапорт".
+        - author: WHO WRITES the document.
+          "рапорт [звання] [ПІБ]" → author=[звання] [ПІБ].
+          "від [звання] [ПІБ]" → author=[звання] [ПІБ].
+          "складає [звання] [ПІБ]" → author=[звання] [ПІБ].
+          If not found → "невідомо".
+        - recipient: WHO RECEIVES the document (after "командиру", "начальнику", "на ім'я").
+          If not found → "невідомо".
+        - subject: one sentence summary in Ukrainian.
 
-        Extract from user input:
-        - documentType: "рапорт" or "методична розробка" only
-        - author: the person WHO WRITES the document (rank + surname). RULE: "рапорт [rank] [surname]" or "[rank] [surname] writes/submits" → that is the AUTHOR. Or "невідомо".
-        - recipient: the person the document is ADDRESSED TO (командиру, начальнику, на ім'я). Or "невідомо".
-        - subject: one sentence summary
+        Examples:
+        Input: "рапорт старшого лейтенанта Шевченка В.М. командиру частини А1234 прошу відпустку"
+        Output: {"documentType":"рапорт","author":"старший лейтенант Шевченко В.М.","recipient":"командиру частини А1234","subject":"прошу надати відпустку"}
 
-        IMPORTANT: "рапорт старшого лейтенанта Шевченка" → author="старший лейтенант Шевченко", recipient="невідомо".
-        Do NOT confuse author and recipient. No extra fields. If type unclear — use "рапорт".
+        Input: "рапорт від сержанта Коваля І.П. начальнику штабу підполковнику Петренку"
+        Output: {"documentType":"рапорт","author":"сержант Коваль І.П.","recipient":"начальнику штабу підполковнику Петренку","subject":"рапорт сержанта Коваля"}
+
+        Input: "методична розробка з тактичної підготовки"
+        Output: {"documentType":"методична розробка","author":"невідомо","recipient":"невідомо","subject":"методична розробка з тактичної підготовки"}
         """)
     String analyze(@UserMessage String rawNotes);
 }
