@@ -906,9 +906,9 @@
       background: var(--card);
       border-radius: var(--radius);
       box-shadow: var(--shadow-md);
-      width: 100%;
-      max-width: 780px;
-      max-height: 90vh;
+      width: 96%;
+      max-width: 1200px;
+      height: 92vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -945,7 +945,7 @@
     }
     .modal-close:hover { background: #fee2e2; color: var(--danger); }
     .modal-body { overflow-y: auto; flex: 1; }
-    .modal-body iframe { width: 100%; min-height: 520px; border: none; display: block; }
+    .modal-body iframe { width: 100%; height: 100%; min-height: 75vh; border: none; display: block; }
     .modal-loading {
       padding: 48px;
       text-align: center;
@@ -1637,13 +1637,15 @@
       const resp = await fetch(`/api/documents/preview?file=${encodeURIComponent(fileName)}`);
       if (resp.status === 404) throw new Error('Файл не знайдено на сервері. Він міг бути видалений після перезапуску.');
       if (!resp.ok) throw new Error('Помилка сервера (' + resp.status + '). Спробуйте ще раз.');
+      const html = await resp.text();
+      const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
       const iframe = document.createElement('iframe');
       iframe.setAttribute('title', 'Перегляд документа');
+      iframe.src = url;
+      iframe.onload = () => URL.revokeObjectURL(url);
       document.getElementById('modalBody').innerHTML = '';
       document.getElementById('modalBody').appendChild(iframe);
-      iframe.contentDocument.open();
-      iframe.contentDocument.write(await resp.text());
-      iframe.contentDocument.close();
     } catch (e) {
       document.getElementById('modalBody').innerHTML =
         `<div class="modal-loading" style="color:var(--danger)">Помилка: ${e.message}</div>`;

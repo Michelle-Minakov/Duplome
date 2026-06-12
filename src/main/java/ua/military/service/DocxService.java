@@ -178,11 +178,11 @@ public class DocxService {
         }
         if (block.length() > 0) addBodyBlock(doc, block.toString());
 
-        // Підпис: посада/звання зліва, прізвище праворуч
+        // Підпис: посада (рядок 1, ліво), звання|ПІБ-КАПС (рядок 2, таблиця), дата
         addEmptyLine(doc);
         addEmptyLine(doc);
 
-        // Збираємо рядки підпису
+        // Збираємо непорожні рядки підпису
         java.util.List<String> sigLines = new java.util.ArrayList<>();
         for (int i = signStart; i < lines.length; i++) {
             String t = lines[i].strip();
@@ -190,23 +190,49 @@ public class DocxService {
         }
 
         if (sigLines.size() >= 2) {
-            // Перший рядок: "звання Прізвище І.І." — ділимо на звання і прізвище
-            // Формат: перше слово = звання, решта = прізвище
-            String firstSig = sigLines.get(0);
-            int spaceIdx = firstSig.indexOf(' ');
-            String rank    = spaceIdx > 0 ? firstSig.substring(0, spaceIdx) : firstSig;
-            String surname = spaceIdx > 0 ? firstSig.substring(spaceIdx + 1).toUpperCase() : "";
-
-            // Таблиця без рамок: звання зліва, прізвище праворуч
-            addSignatureRow(doc, rank, surname);
-            // Решта рядків підпису — зліва
-            for (int i = 1; i < sigLines.size(); i++) {
+            // Рядок 0 — посада автора (ліворуч)
+            addLine(doc, sigLines.get(0), ParagraphAlignment.LEFT, false);
+            // Рядок 1 — "звання Прізвище Ім'я": таблиця звання зліва | ПІБ КАПС справа
+            formatRankNameRow(doc, sigLines.get(1));
+            // Решта рядків (якщо є) — ліворуч
+            for (int i = 2; i < sigLines.size(); i++) {
                 addLine(doc, sigLines.get(i), ParagraphAlignment.LEFT, false);
             }
-        } else {
-            for (String s : sigLines) addLine(doc, s, ParagraphAlignment.LEFT, false);
+        } else if (sigLines.size() == 1) {
+            // Тільки звання+ПІБ — таблиця без посади
+            formatRankNameRow(doc, sigLines.get(0));
         }
         addLine(doc, date, ParagraphAlignment.LEFT, false);
+    }
+
+    // Складані військові звання (2 слова)
+    private static final java.util.List<String> COMPOUND_RANKS = java.util.List.of(
+        "молодший лейтенант", "старший лейтенант",
+        "молодший сержант",   "старший сержант",
+        "головний сержант",   "майстер-сержант",
+        "старший солдат",     "старший прапорщик",
+        "молодший прапорщик", "головний корабельний старшина"
+    );
+
+    // ── Підпис: "звання Ім'я ПРІЗВИЩЕ" → таблиця: звання зліва | Ім'я ПРІЗВИЩЕ справа ──
+    private void formatRankNameRow(XWPFDocument doc, String line) {
+        String lower = line.toLowerCase();
+        String rank = null;
+        String name = null;
+        for (String cr : COMPOUND_RANKS) {
+            if (lower.startsWith(cr + " ") || lower.equals(cr)) {
+                rank = line.substring(0, cr.length());
+                name = line.substring(cr.length()).strip();
+                break;
+            }
+        }
+        if (rank == null) {
+            int spaceIdx = line.indexOf(' ');
+            rank = spaceIdx > 0 ? line.substring(0, spaceIdx) : line;
+            name = spaceIdx > 0 ? line.substring(spaceIdx + 1).strip() : "";
+        }
+        // Ім'я і ПРІЗВИЩЕ — модель вже форматує правильно (Ім'я ПРІЗВИЩЕ)
+        addSignatureRow(doc, rank, name);
     }
 
     // ── Підпис: таблиця 2 колонки без рамок — звання зліва, ПРІЗВИЩЕ справа ──
